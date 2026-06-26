@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoldBurn V4 Sandbox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f0a0a; }
+        ::-webkit-scrollbar-thumb { background: #451a1a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #7f2d2d; }
+    </style>
+</head>
+<body class="bg-stone-950 text-stone-100 min-h-screen font-serif selection:bg-amber-800 selection:text-amber-100">
+
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useMemo, createContext, useContext } from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+
+        // ============================================================================
+        // V4 CARD DATABASE
+        // ============================================================================
+        
+        // XXXX HOW TO ADD CARDS AND PICTURES XXXX
+        // 1. To add a new card, create a new object in this MASTER_CARDS list.
+        // 2. Make sure you define 'limit'. Default non-vitals to 3. Vital should be 1.
+        // 3. To add a picture, use the 'image' property with the file name or direct URL link.
+        const MASTER_CARDS = [
+            { id: 'heart_soul', name: 'Heart and Soul', type: 'Vital', limit: 1, hp: 20, cost: 0, set: 'Core', image: 'Heart&Soul.jpg', description: 'Can make up to three actions per turn. Unaffected by move effects.' },
+            { id: 'TEST', name: 'TEST', type: 'TEST', limit: 3, hp: 20, cost: 0, set: 'TEST', image: 'TEST.jpg', description: 'TESTTESTTESTTEST.' },
+            { id: 'bandit', name: 'Bandit', type: 'Troop', limit: 3, hp: 3, cost: 3, set: 'Bandits Arrival', image: 'Bandit.jpg', description: 'Slash (0): Deal 3 dmg. Knife Toss (2): Deal 3 dmg.' },
+            { id: 'death_toll', name: 'Death Toll', type: 'Act (Fast)', limit: 3, cost: 3, set: 'Bandits Arrival', image: 'DeathToll.jpg', description: 'This turn, whenever a troop your opponent controls is destroyed, you gain 2 gold.' },
+            { id: 'bandit_checkpoint', name: 'Bandit Checkpoint', type: 'Zone', limit: 3, cost: 0, set: 'Bandits Arrival', image: 'BanditCheckpoint.jpg', description: 'Every time your opponent summons a troop, you gain 1 gold.' },
+            { id: 'engrave_engrave', name: 'Engrave Engrave', type: 'Act (Slow)', limit: 3, cost: 2, set: 'Bandits Arrival', image: 'engraveEngrave.jpg', description: 'Target a card in either graveyard; expel it.' },
+            { id: 'vacation_abyss', name: 'Vacation in the Abyss', type: 'Act (Fast)', limit: 3, cost: 3, set: 'Bandits Arrival', image: 'VayCayinAbyss.jpg', description: 'Target a non-vital troop on the field; It is expelled until the end of the turn.' },
+            { id: 'locust_swarm', name: 'Locust Swarm', type: 'Act (Slow)', limit: 3, cost: 4, set: 'Bandits Arrival', image: 'LocustSwarm.jpg', description: 'All of your opponent’s troops gain 3 poison counters (remove 1 counter at the end of each turn, deal 1 dmg.)' },
+            { id: 'meat_hook', name: 'Meat Hook', type: 'Troop', limit: 3, hp: 3, cost: 3, set: 'Bandits Arrival', image: 'MeatHook.jpg', description: 'Hook Shot (3)- Deal 2 dmg, target is moved up 1, and cannot move or be moved until the end of the next turn. "Rest assured, it is a moving experience."' },
+            { id: 'noble_sacrifice', name: 'Noble Sacrifice', type: 'Act (Slow)', limit: 3, cost: 2, set: 'Bandits Arrival', image: 'NobleSac.jpg', description: 'Destroy target non-vital card you control, and if you do, destroy target non-vital card your opponent controls.' },
+            { id: 'nobles_sacrifice', name: "Noble's Sacrifice", type: 'Act (Fast)', limit: 3, cost: 5, set: 'Bandits Arrival', image: 'NoblesSac.jpg', description: 'Destroy a non-vital troop your opponent controls.' },
+            { id: 'reaper_wealth', name: 'Reaper of Wealth', type: 'Troop', limit: 3, hp: 3, cost: 2, set: 'Bandits Arrival', image: 'ReapofWealth.jpg', description: 'If reaper of wealth destroys an opponent’s troop, gain 2 gold. Tax Life Force (2)- deal 2 dmg. Just like the Ferryman.' },
+            { id: 'reject_mortality', name: 'Reject Mortality', type: 'Act (Slow)', limit: 3, cost: 6, set: 'Bandits Arrival', image: 'RejectMortality.jpg', description: 'Resurrect a troop from your graveyard.' },
+            { id: 'temporary_treaty', name: 'Temporary Treaty', type: 'Act (Slow)', limit: 3, cost: 5, set: 'Bandits Arrival', image: 'TempTreaty.jpg', description: 'Until the end of the next turn, neither player can make actions or activate cards that would deal dmg to another card.' },
+            { id: 'thief_thievery', name: 'Thief of Thievery', type: 'Troop', limit: 3, hp: 1, cost: 3, set: 'Bandits Arrival', image: 'TheifofTheif.jpg', description: 'That Thief’s Thievery (0)- your opponent loses 2 gold, you gain 2 gold. "No ma’am this is MY wallet."' },
+            { id: 'goobis', name: 'Goobis', type: 'Troop', limit: 3, hp: 4, cost: 4, set: 'Core', image: 'Goobis.jpg', description: 'Gindle (0)- Heal 4. Skimble (5)- target a troop in your graveyard; resurrect that target. "Triangle."' },
+            { id: 'bandit_territory', name: 'Bandit Territory', type: 'Zone', limit: 3, cost: 0, set: 'Bandits Arrival', image: 'BanditTerritory.jpg', description: 'When this zone is activated: You can add 1 "bandit" card from your deck to your hand.' },
+            { id: 'bandit_widowmaker', name: 'Bandit Widowmaker', type: 'Troop', limit: 3, hp: 7, cost: 5, set: 'Bandits Arrival', image: 'BanditWindowmaker.jpg', description: 'Slay (1)- Deal 5 dmg. Bounty (2)- Deal 3 dmg. if this move destroys an enemy, gain 3 gold.' },
+            { id: 'dark_inviter', name: 'Dark Inviter', type: 'Troop', limit: 3, hp: 1, cost: 3, set: 'Core', image: 'DarkInviter.jpg', description: 'When this troop attacks or is attacked by a non-vital card: you can expel both cards. journey to the abyss (1)- deal 1 dmg. The abyss returns even the boldest gaze' },
+            { id: 'defenders_instinct', name: 'Defenders Instinct', type: 'Act (Fast)', limit: 3, cost: 2, set: 'Core', image: 'DefendersInstinct.jpg', description: 'When your opponent uses a move that would deal damage to a troop your control: you can redirect that damage to another card you control.' },
+            { id: 'deus_hexer', name: 'Deus Hexer', type: 'Troop', limit: 3, hp: 3, cost: 5, set: 'Core', image: 'DeusHexer.jpg', description: 'When a vital troop you control takes damage, you can summon this card from your hand for no cost. Hex (0)- deal 2 dmg' },
+            { id: 'the_gold_mine', name: 'The Gold Mine', type: 'Building', limit: 3, hp: 10, cost: 4, set: 'Core', image: 'GoldMine.jpg', description: 'When this card is destroyed, gain gold equal to the amount of gold tokens that were on this card. Gold Rush (0)- place 2 gold tokens on this card. "A little blacklung never hurt anyone." -last words of an underpaid miner' },
+            { id: 'watch_tower', name: 'Watch Tower', type: 'Building', limit: 3, hp: 5, cost: 4, set: 'Core', image: 'WatchTower.jpg', description: 'Your troops can make the move action in addition to their regular action. Arrows (1)- deal 1 dmg. "At least we know we’ll always have someone watching."' },
+            { id: 'bandit_archer', name: 'Bandit Archer', type: 'Troop', limit: 3, hp: 4, cost: 2, set: 'Bandits Arrival', image: 'BanditArcher.jpg', description: 'Pelt (1)- Deal 2 damage' },
+            { id: 'bandit_artillery', name: 'Bandit Artillery', type: 'Troop', limit: 3, hp: 5, cost: 5, set: 'Bandits Arrival', image: 'BanditArtillery.jpg', description: 'Blast (2)- Deal 5 dmg. Gunpowder Rain (3)- Deal 3 dmg. "The smell of sulfur and gunpowder hangs in the air. The war machine is close."' },
+            { id: 'bandit_captain', name: 'Bandit Captain', type: 'Troop', limit: 3, hp: 8, cost: 6, set: 'Bandits Arrival', image: 'BanditCaptain.jpg', description: 'Other bandits you control deal +1 damage with all of their attacks. Dexterous Strike (2)- Deal 4 dmg to up to two seperate targets' }
+        ];
+
+        // XXXX HOW TO ADD STARTER DECKS XXXX
+        // 1. Add a new property name here (e.g. "Starter Set 2").
+        // 2. Define the exact Card IDs and the quantities you want loaded.
+        const STARTER_DECKS = {
+            "test1": {
+                'heart_soul': 1,
+                'TEST': 3
+            },
+            "Bandits Arrival Starter": {
+                'heart_soul': 1,
+                'engrave_engrave': 1,
+                'defenders_instinct': 1,
+                'death_toll': 1,
+                'nobles_sacrifice': 1,
+                'vacation_abyss': 1,
+                'locust_swarm': 1,
+                'reject_mortality': 1,
+                'temporary_treaty': 1,
+                'noble_sacrifice': 1,
+                'thief_thievery': 1,
+                'meat_hook': 1,
+                'bandit': 3,
+                'bandit_archer': 2,
+                'bandit_widowmaker': 2,
+                'reaper_wealth': 2,
+                'dark_inviter': 1,
+                'bandit_captain': 2,
+                'bandit_artillery': 1,
+                'goobis': 1,
+                'deus_hexer': 1,
+                'watch_tower': 1,
+                'the_gold_mine': 1,
+                'bandit_territory': 1,
+                'bandit_checkpoint': 1
+            }
+        };
+
+        const GameContext = createContext();
+
+        const GameProvider = ({ children }) => {
+            const [customDeck, setCustomDeck] = useState(() => {
+                const stored = localStorage.getItem('v4_saved_deck');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    const cleaned = {};
+                    for (const key in parsed) if (MASTER_CARDS.find(c => c.id === key)) cleaned[key] = parsed[key];
+                    return cleaned;
+                }
+                return STARTER_DECKS["Bandits Arrival Starter"];
+            });
+
+            const updateDeckQty = (id, amount) => {
+                setCustomDeck(prev => {
+                    const cardDef = MASTER_CARDS.find(c => c.id === id);
+                    const limit = cardDef.limit !== undefined ? cardDef.limit : 3;
+                    const currentQty = prev[id] || 0;
+                    
+                    let nextQty = currentQty + amount;
+                    nextQty = Math.max(0, Math.min(nextQty, limit));
+
+                    const next = { ...prev, [id]: nextQty };
+                    if (next[id] === 0) delete next[id];
+                    localStorage.setItem('v4_saved_deck', JSON.stringify(next));
+                    return next;
+                });
+            };
+
+            const loadEntireDeck = (deckObj) => {
+                // Verifies cards exist in database before importing
+                const cleaned = {};
+                for (const key in deckObj) {
+                    const cardDef = MASTER_CARDS.find(c => c.id === key);
+                    if (cardDef) {
+                        const limit = cardDef.limit !== undefined ? cardDef.limit : 3;
+                        cleaned[key] = Math.min(deckObj[key], limit); 
+                    }
+                }
+                setCustomDeck(cleaned);
+                localStorage.setItem('v4_saved_deck', JSON.stringify(cleaned));
+            };
+
+            return (
+                <GameContext.Provider value={{ customDeck, updateDeckQty, loadEntireDeck }}>
+                    {children}
+                </GameContext.Provider>
+            );
+        };
+
+        // ============================================================================
+        // DECK BUILDER (FORGE)
+        // ============================================================================
+        const DeckBuilder = () => {
+            const { customDeck, updateDeckQty, loadEntireDeck } = useContext(GameContext);
+            
+            const [search, setSearch] = useState('');
+            const [costFilter, setCostFilter] = useState('All');
+            const [typeFilter, setTypeFilter] = useState('All');
+            const [setFilter, setSetFilter] = useState('All');
+            const [sortOrder, setSortOrder] = useState('A-Z');
+
+            // Utilities State
+            const [selectedStarter, setSelectedStarter] = useState(Object.keys(STARTER_DECKS)[0]);
+            const [importString, setImportString] = useState('');
+
+            const uniqueTypes = [...new Set(MASTER_CARDS.map(c => c.type))].sort();
+            const uniqueSets = [...new Set(MASTER_CARDS.map(c => c.set))].sort();
+
+            const incCost = () => setCostFilter(prev => prev === 'All' ? 0 : prev + 1);
+            const decCost = () => setCostFilter(prev => prev === 'All' ? 0 : Math.max(0, prev - 1));
+            const clearCost = () => setCostFilter('All');
+
+            const filteredCards = useMemo(() => {
+                let result = MASTER_CARDS.filter(card => {
+                    if (search && !card.name.toLowerCase().includes(search.toLowerCase())) return false;
+                    if (costFilter !== 'All' && card.cost !== costFilter) return false;
+                    if (typeFilter !== 'All' && card.type !== typeFilter) return false;
+                    if (setFilter !== 'All' && card.set !== setFilter) return false;
+                    return true;
+                });
+
+                result.sort((a, b) => {
+                    if (sortOrder === 'A-Z') return a.name.localeCompare(b.name);
+                    if (sortOrder === 'Z-A') return b.name.localeCompare(a.name);
+                    return 0;
+                });
+
+                return result;
+            }, [search, costFilter, typeFilter, setFilter, sortOrder]);
+
+            // Separation logic for side panel
+            const deckEntries = Object.entries(customDeck);
+            const vitalEntries = deckEntries.filter(([id]) => MASTER_CARDS.find(c => c.id === id)?.type === 'Vital');
+            const mainEntries = deckEntries.filter(([id]) => MASTER_CARDS.find(c => c.id === id)?.type !== 'Vital');
+            const totalCount = mainEntries.reduce((acc, [_, qty]) => acc + qty, 0);
+
+            // Import/Export Logic
+            const handleExport = () => {
+                const dataStr = JSON.stringify(customDeck);
+                navigator.clipboard.writeText(dataStr).then(() => {
+                    alert("Deck code copied to clipboard!");
+                }).catch(err => {
+                    alert("Failed to copy. Here is your code:\n" + dataStr);
+                });
+            };
+
+            const handleImport = () => {
+                if(!importString.trim()) return;
+                try {
+                    const parsed = JSON.parse(importString);
+                    loadEntireDeck(parsed);
+                    setImportString('');
+                    alert("Deck imported successfully!");
+                } catch(e) {
+                    alert("Invalid deck code format.");
+                }
+            };
+
+            const handleLoadStarter = () => {
+                const deckObj = STARTER_DECKS[selectedStarter];
+                if (deckObj) {
+                    if(window.confirm(`Are you sure you want to overwrite your current deck with the ${selectedStarter}?`)) {
+                        loadEntireDeck(deckObj);
+                    }
+                }
+            };
+
+            return (
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 p-6 max-w-[1500px] mx-auto">
+                    
+                    {/* LEFT PANEL: FILTERS & CARD GRID */}
+                    <div className="xl:col-span-8 bg-stone-900 border border-amber-900/30 rounded-2xl p-5 shadow-2xl flex flex-col h-[750px]">
+                        
+                        <div className="border-b border-stone-800 pb-4 mb-4">
+                            <h2 className="text-lg font-bold text-amber-500 uppercase tracking-wide mb-3">V4 Deck Builder</h2>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                                <input 
+                                    type="text" 
+                                    placeholder="Search by name..." 
+                                    value={search}
+                                    onChange={(e)=>setSearch(e.target.value)}
+                                    className="col-span-1 md:col-span-6 bg-stone-950 border border-stone-800 rounded px-3 py-1.5 text-stone-200 outline-none focus:border-amber-600 text-xs"
+                                />
+                                
+                                <select value={sortOrder} onChange={(e)=>setSortOrder(e.target.value)} className="col-span-1 md:col-span-2 bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-stone-300 outline-none text-xs">
+                                    <option value="A-Z">Sort: A - Z</option>
+                                    <option value="Z-A">Sort: Z - A</option>
+                                </select>
+
+                                <div className="col-span-1 md:col-span-2 flex items-center justify-between bg-stone-950 border border-stone-800 rounded px-2 py-1 text-xs">
+                                    <span className="text-stone-400 font-bold">Cost:</span>
+                                    <div className="flex items-center">
+                                        <button onClick={decCost} className="bg-stone-800 hover:bg-stone-700 text-stone-200 w-5 h-5 rounded flex items-center justify-center">-</button>
+                                        <span className="w-8 text-center text-amber-500 font-bold">{costFilter}</span>
+                                        <button onClick={incCost} className="bg-stone-800 hover:bg-stone-700 text-stone-200 w-5 h-5 rounded flex items-center justify-center">+</button>
+                                        {costFilter !== 'All' && <button onClick={clearCost} className="ml-2 text-rose-500 hover:text-rose-400 font-bold">X</button>}
+                                    </div>
+                                </div>
+
+                                <select value={typeFilter} onChange={(e)=>setTypeFilter(e.target.value)} className="col-span-1 bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-stone-300 outline-none text-xs">
+                                    <option value="All">All Types</option>
+                                    {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                                </select>
+
+                                <select value={setFilter} onChange={(e)=>setSetFilter(e.target.value)} className="col-span-1 bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-stone-300 outline-none text-xs">
+                                    <option value="All">All Sets</option>
+                                    {uniqueSets.map(set => <option key={set} value={set}>{set}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 content-start">
+                            {filteredCards.map(card => {
+                                const qty = customDeck[card.id] || 0;
+                                const limit = card.limit !== undefined ? card.limit : 3;
+                                const maxReached = qty >= limit;
+
+                                return (
+                                    <div key={card.id} className="bg-stone-950 border border-stone-850 p-3 rounded-xl flex flex-col hover:border-amber-900 transition h-48">
+                                        
+                                        {/* Fixed Header */}
+                                        <div className="shrink-0">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h4 className="font-bold text-stone-200 text-sm truncate">{card.name}</h4>
+                                                <span className="text-[10px] font-mono text-amber-500">{card.cost}G</span>
+                                            </div>
+                                            <div className="flex justify-between items-center mt-1 pb-2 border-b border-stone-900">
+                                                <span className="text-[9px] uppercase text-stone-500">{card.type} • {card.set}</span>
+                                                <span className="text-[8px] text-stone-600 font-mono">Limit: {limit}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Scrollable Description Box */}
+                                        <div className="flex-1 overflow-y-auto my-2 pr-1">
+                                            <p className="text-[11px] text-stone-400 italic leading-snug">{card.description}</p>
+                                        </div>
+
+                                        {/* Fixed Footer with Add/Drop Buttons */}
+                                        <div className="shrink-0 flex items-center justify-between border-t border-stone-900 pt-2">
+                                            <span className="text-xs text-stone-500">In Deck: <b className="text-amber-500">{qty}</b></span>
+                                            <div className="flex gap-1">
+                                                <button onClick={() => updateDeckQty(card.id, -1)} className="w-6 h-6 bg-stone-900 hover:bg-stone-800 text-stone-300 rounded transition">-</button>
+                                                <button onClick={() => !maxReached && updateDeckQty(card.id, 1)} className={`w-6 h-6 rounded transition ${maxReached ? 'bg-stone-900 text-stone-700 cursor-not-allowed' : 'bg-amber-900/40 hover:bg-amber-900/70 text-amber-400'}`}>+</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {filteredCards.length === 0 && (
+                                <div className="col-span-full text-center text-stone-500 italic py-10">No cards match the current filters.</div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* RIGHT PANEL: LIST & UTILITIES */}
+                    <div className="xl:col-span-4 flex flex-col gap-4 h-[750px]">
+                        
+                        {/* DECK LIST */}
+                        <div className="bg-stone-900 border border-amber-900/30 rounded-2xl p-5 shadow-2xl flex flex-col flex-1 min-h-0">
+                            <div className="border-b border-stone-800 pb-3 mb-3 flex justify-between items-center">
+                                <h3 className="text-sm font-bold text-stone-300 uppercase tracking-widest">Deck List</h3>
+                                <span className="text-[10px] font-mono font-black text-amber-400 bg-amber-950/30 border border-amber-900/50 px-2 py-1 rounded">{totalCount} Cards</span>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                                {/* Vital Card Section (Isolated) */}
+                                <div>
+                                    <span className="text-[9px] uppercase tracking-widest text-stone-500 font-bold block mb-1">Vital Card (Not Counted)</span>
+                                    <div className="space-y-1.5">
+                                        {vitalEntries.length > 0 ? vitalEntries.map(([id, qty]) => {
+                                            const c = MASTER_CARDS.find(x => x.id === id);
+                                            return c ? (
+                                                <div key={id} className="bg-stone-950 border border-stone-800 px-3 py-2 rounded-xl flex justify-between items-center group">
+                                                    <div>
+                                                        <div className="text-xs font-bold text-stone-200">{c.name}</div>
+                                                        <div className="text-[9px] text-amber-500">{c.type}</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs text-amber-500 font-bold">x{qty}</span>
+                                                        <button onClick={() => updateDeckQty(id, -1)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition text-[10px] font-bold">Drop</button>
+                                                    </div>
+                                                </div>
+                                            ) : null;
+                                        }) : (
+                                            <div className="text-[10px] italic text-rose-500/70 py-1">Missing a Vital card!</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Main Deck Section */}
+                                <div>
+                                    <span className="text-[9px] uppercase tracking-widest text-stone-500 font-bold block mb-1 border-t border-stone-800 pt-2">Main Forces</span>
+                                    <div className="space-y-1.5">
+                                        {mainEntries.map(([id, qty]) => {
+                                            const c = MASTER_CARDS.find(x => x.id === id);
+                                            return c ? (
+                                                <div key={id} className="bg-stone-950 border border-stone-850 px-3 py-2 rounded-xl flex justify-between items-center group">
+                                                    <div>
+                                                        <div className="text-xs font-bold text-stone-300">{c.name}</div>
+                                                        <div className="text-[9px] text-stone-500">{c.type}</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-xs text-amber-500 font-bold">x{qty}</span>
+                                                        <button onClick={() => updateDeckQty(id, -1)} className="text-rose-500 opacity-0 group-hover:opacity-100 transition text-[10px] font-bold">Drop</button>
+                                                    </div>
+                                                </div>
+                                            ) : null;
+                                        })}
+                                        {mainEntries.length === 0 && <div className="text-[10px] italic text-stone-600 py-1">No cards in main deck.</div>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* IMPORT/EXPORT UTILITIES */}
+                        <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-xl shrink-0">
+                            <span className="text-[9px] uppercase tracking-widest text-stone-500 font-bold block mb-2">Deck Manager</span>
+                            
+                            {/* Starter Dropdown */}
+                            <div className="flex gap-2 mb-3">
+                                <select value={selectedStarter} onChange={(e)=>setSelectedStarter(e.target.value)} className="flex-1 bg-stone-950 border border-stone-800 rounded px-2 text-[10px] text-stone-300 outline-none">
+                                    {Object.keys(STARTER_DECKS).map(name => <option key={name} value={name}>{name}</option>)}
+                                </select>
+                                <button onClick={handleLoadStarter} className="bg-amber-900/30 hover:bg-amber-900/60 text-amber-500 border border-amber-900/50 rounded px-3 py-1.5 text-[10px] font-bold uppercase transition">Load</button>
+                            </div>
+
+                            <div className="border-t border-stone-800 pt-3">
+                                <button onClick={handleExport} className="w-full mb-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded px-3 py-1.5 text-[10px] font-bold uppercase transition border border-stone-700">Export Deck to Clipboard</button>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={importString} 
+                                        onChange={(e)=>setImportString(e.target.value)} 
+                                        placeholder="Paste deck code..." 
+                                        className="flex-1 bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-[10px] text-stone-200 outline-none focus:border-indigo-600" 
+                                    />
+                                    <button onClick={handleImport} className="bg-indigo-900/30 hover:bg-indigo-900/60 text-indigo-400 border border-indigo-900/50 rounded px-3 py-1.5 text-[10px] font-bold uppercase transition">Import</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ============================================================================
+        // V4 MULTIPLAYER LOBBY
+        // ============================================================================
+        const Lobby = ({ onJoin }) => {
+            const [username, setUsername] = useState('');
+            const [roomCode, setRoomCode] = useState('');
+
+            return (
+                <div className="max-w-md mx-auto mt-20 bg-stone-900 border border-amber-900/30 rounded-2xl p-6 shadow-2xl text-center">
+                    <h1 className="text-2xl font-black text-amber-500 uppercase tracking-widest mb-1">V4 Engine</h1>
+                    <p className="text-xs text-stone-400 mb-6">Peer-to-Peer Sandbox Mode</p>
+                    
+                    <div className="space-y-4 text-left">
+                        <div>
+                            <label className="text-[10px] font-bold text-stone-500 uppercase">Temp Username</label>
+                            <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-stone-200 outline-none focus:border-amber-600" placeholder="Player1" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-stone-500 uppercase">Room Code (Leave blank to Create)</label>
+                            <input type="text" value={roomCode} onChange={e=>setRoomCode(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-amber-500 uppercase outline-none focus:border-amber-600" placeholder="e.g. BATTLE99" />
+                        </div>
+                        <button onClick={() => onJoin(roomCode || Math.random().toString(36).substring(2,6).toUpperCase(), username || 'Duelist', !roomCode)} className="w-full bg-gradient-to-r from-amber-800 to-amber-950 text-amber-100 font-bold uppercase py-3 rounded-lg text-xs hover:brightness-110 border border-amber-700/50 transition">
+                            {roomCode ? 'Join Match' : 'Create Match'}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // ============================================================================
+        // V4 SANDBOX BOARD
+        // ============================================================================
+        const SandboxBoard = ({ roomCode, username, isHost, customDeck, onLeaveLobby }) => {
+            const [peer, setPeer] = useState(null);
+            const [conn, setConn] = useState(null);
+            const [connected, setConnected] = useState(false);
+            
+            const [setupPhase, setSetupPhase] = useState(true);
+            const [myVitalPos, setMyVitalPos] = useState(null);
+            const [myVitalLocked, setMyVitalLocked] = useState(false);
+            const [oppVitalLocked, setOppVitalLocked] = useState(false);
+            const [vitalCardInst, setVitalCardInst] = useState(null);
+
+            const [gold, setGold] = useState(isHost ? 3 : 0);
+            const [deck, setDeck] = useState([]);
+            const [hand, setHand] = useState([]);
+            const [grave, setGrave] = useState([]);
+            const [voidZone, setVoidZone] = useState([]);
+            const [myGrid, setMyGrid] = useState([ [null, null, null], [null, null, null] ]);
+            const [actSlot, setActSlot] = useState(null);
+
+            const [oppGold, setOppGold] = useState(isHost ? 0 : 3);
+            const [oppHandCount, setOppHandCount] = useState(5);
+            const [oppDeckCount, setOppDeckCount] = useState(0);
+            const [oppGrave, setOppGrave] = useState([]);
+            const [oppVoid, setOppVoid] = useState([]);
+            const [oppGrid, setOppGrid] = useState([ [null, null, null], [null, null, null] ]);
+            const [oppActSlot, setOppActSlot] = useState(null);
+
+            const [sharedZone, setSharedZone] = useState(null); 
+            const [logs, setLogs] = useState([]);
+            
+            const [selectedHandIdx, setSelectedHandIdx] = useState(null);
+            const [viewModal, setViewModal] = useState({ isOpen: false, title: '', cards: [], onSelect: null });
+            const [activeMenu, setActiveMenu] = useState(null);
+
+            useEffect(() => {
+                let generatedDeck = [];
+                Object.entries(customDeck).forEach(([id, qty]) => {
+                    if (id === 'heart_soul') return; 
+                    const card = MASTER_CARDS.find(c => c.id === id);
+                    if(card) {
+                        for(let i=0; i<qty; i++) generatedDeck.push({ ...card, instanceId: Math.random().toString(36).substr(2,9), currentHp: card.hp });
+                    }
+                });
+                generatedDeck.sort(() => Math.random() - 0.5);
+
+                const vitalDef = MASTER_CARDS.find(c => c.type === 'Vital');
+                if (vitalDef && customDeck['heart_soul']) {
+                    setVitalCardInst({ ...vitalDef, instanceId: 'vital_1', currentHp: vitalDef.hp });
+                }
+
+                const startingHand = generatedDeck.splice(0, 5);
+                setDeck(generatedDeck);
+                setHand(startingHand);
+                addLog(`Game Engine V4 Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`);
+            }, []);
+
+            useEffect(() => {
+                const p = new Peer(isHost ? `v4-${roomCode}` : null);
+                p.on('open', id => {
+                    if (!isHost) {
+                        const c = p.connect(`v4-${roomCode}`);
+                        setupConnection(c);
+                    }
+                });
+                p.on('connection', c => setupConnection(c));
+                setPeer(p);
+                return () => p.destroy();
+            }, []);
+
+            useEffect(() => {
+                if (myVitalLocked && oppVitalLocked) {
+                    setSetupPhase(false);
+                    addLog("Both players have positioned their Vitals. Combat begins now!", false);
+                }
+            }, [myVitalLocked, oppVitalLocked]);
+
+            useEffect(() => {
+                if (conn && connected && !setupPhase) {
+                    conn.send({ type: 'SYNC_COUNTS', hand: hand.length, deck: deck.length, grave: grave, voidZone: voidZone });
+                }
+            }, [hand, deck, grave, voidZone, connected, setupPhase]);
+
+            const setupConnection = (c) => {
+                setConn(c);
+                c.on('open', () => {
+                    setConnected(true);
+                    addLog("Opponent Connected!");
+                    c.send({ type: 'SYNC_GOLD', gold: isHost ? 3 : 0 });
+                });
+                c.on('data', data => {
+                    if (data.type === 'LOG') setLogs(prev => [data.msg, ...prev]);
+                    if (data.type === 'SYNC_GOLD') setOppGold(data.gold);
+                    if (data.type === 'SYNC_GRID') setOppGrid(data.grid);
+                    if (data.type === 'SYNC_ZONE') setSharedZone(data.zone);
+                    if (data.type === 'SYNC_ACT') setOppActSlot(data.act);
+                    if (data.type === 'SYNC_COUNTS') {
+                        setOppHandCount(data.hand);
+                        setOppDeckCount(data.deck);
+                        setOppGrave(data.grave);
+                        setOppVoid(data.voidZone);
+                    }
+                    if (data.type === 'VITAL_LOCKED') {
+                        setOppVitalLocked(true);
+                        let newOppGrid = [...oppGrid];
+                        newOppGrid[data.pos.r] = [...newOppGrid[data.pos.r]];
+                        newOppGrid[data.pos.r][data.pos.c] = data.card;
+                        setOppGrid(newOppGrid);
+                    }
+                    if (data.type === 'CONCEDE') {
+                        alert("🎉 You Win! Your opponent has conceded the match.");
+                        onLeaveLobby(); 
+                    }
+                });
+            };
+
+            const addLog = (msg, broadcast = false) => {
+                const formatted = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                setLogs(prev => [formatted, ...prev]);
+                if (broadcast && conn) conn.send({ type: 'LOG', msg: formatted });
+            };
+
+            const broadcastGrid = (newGrid) => { setMyGrid(newGrid); if(conn) conn.send({ type: 'SYNC_GRID', grid: newGrid }); };
+            const broadcastZone = (card) => { setSharedZone(card); if(conn) conn.send({ type: 'SYNC_ZONE', zone: card }); };
+            const broadcastAct = (card) => { setActSlot(card); if(conn) conn.send({ type: 'SYNC_ACT', act: card }); };
+
+            const handleConcede = () => {
+                if(window.confirm("Are you sure you want to concede? You will lose the match.")) {
+                    if(conn) conn.send({ type: 'CONCEDE' });
+                    alert("You have conceded the match.");
+                    onLeaveLobby(); 
+                }
+            };
+
+            const lockVitalPlacement = () => {
+                if (!myVitalPos) return alert("Select a grid space to place your Vital!");
+                setMyVitalLocked(true);
+                
+                let newMyGrid = [...myGrid];
+                newMyGrid[myVitalPos.r] = [...newMyGrid[myVitalPos.r]];
+                newMyGrid[myVitalPos.r][myVitalPos.c] = vitalCardInst;
+                setMyGrid(newMyGrid);
+                
+                if (conn) conn.send({ type: 'VITAL_LOCKED', pos: myVitalPos, card: vitalCardInst });
+                addLog(`${username} deployed their Vital card to the grid.`, true);
+            };
+
+            const modifyGold = (amt) => {
+                const newGold = Math.max(0, gold + amt);
+                setGold(newGold);
+                if(conn) conn.send({ type: 'SYNC_GOLD', gold: newGold });
+                addLog(`${username} ${amt > 0 ? 'gained' : 'spent'} ${Math.abs(amt)} Gold.`, true);
+            };
+
+            const drawFromDeck = () => {
+                if (deck.length === 0) return;
+                const d = [...deck];
+                const card = d.pop();
+                setDeck(d);
+                setHand([...hand, card]);
+                addLog(`${username} drew a card.`, true);
+            };
+
+            const searchDeckDraw = (realIdx) => {
+                const d = [...deck];
+                const card = d.splice(realIdx, 1)[0];
+                setDeck(d);
+                setHand([...hand, card]);
+                setViewModal({ isOpen: false });
+                addLog(`${username} searched their deck and drew a card.`, true);
+            };
+
+            const openViewer = (title, cards, selectable = false) => {
+                setViewModal({
+                    isOpen: true,
+                    title: title,
+                    cards: cards,
+                    onSelect: selectable ? searchDeckDraw : null
+                });
+            };
+
+            const placeToGrid = (r, c) => {
+                if (selectedHandIdx === null) return;
+                const card = hand[selectedHandIdx];
+                if (card.type.includes('Act') || card.type === 'Zone') return alert("Acts and Zones have specific slots in the middle!");
+                
+                let newGrid = [...myGrid];
+                newGrid[r] = [...newGrid[r]];
+                newGrid[r][c] = card;
+                
+                let newHand = [...hand];
+                newHand.splice(selectedHandIdx, 1);
+                
+                setHand(newHand);
+                setSelectedHandIdx(null);
+                broadcastGrid(newGrid);
+                addLog(`${username} deployed ${card.name} to an Empty Space.`, true);
+            };
+
+            const placeToZone = () => {
+                if (selectedHandIdx === null) return;
+                const card = hand[selectedHandIdx];
+                if (card.type !== 'Zone') return;
+                let newHand = [...hand];
+                newHand.splice(selectedHandIdx, 1);
+                setHand(newHand);
+                setSelectedHandIdx(null);
+                broadcastZone(card);
+                addLog(`${username} established a new Zone: ${card.name}.`, true);
+            };
+
+            const placeToAct = () => {
+                if (selectedHandIdx === null) return;
+                const card = hand[selectedHandIdx];
+                if (!card.type.includes('Act')) return;
+                let newHand = [...hand];
+                newHand.splice(selectedHandIdx, 1);
+                setHand(newHand);
+                setSelectedHandIdx(null);
+                broadcastAct(card);
+                addLog(`${username} played ${card.type}: ${card.name}.`, true);
+            };
+
+            const modifyHealth = (r, c, amt) => {
+                let newGrid = [...myGrid];
+                newGrid[r] = [...newGrid[r]];
+                newGrid[r][c] = { ...newGrid[r][c], currentHp: newGrid[r][c].currentHp + amt };
+                broadcastGrid(newGrid);
+            };
+
+            const sendFieldCardAway = (type, dest, r=0, c=0) => {
+                let card;
+                if (type === 'grid') {
+                    card = myGrid[r][c];
+                    let newGrid = [...myGrid];
+                    newGrid[r] = [...newGrid[r]];
+                    newGrid[r][c] = null;
+                    broadcastGrid(newGrid);
+                } else if (type === 'act') {
+                    card = actSlot;
+                    broadcastAct(null);
+                } else if (type === 'zone') {
+                    card = sharedZone;
+                    broadcastZone(null);
+                }
+                
+                if (dest === 'grave') {
+                    setGrave([card, ...grave]);
+                    addLog(`${username} sent ${card.name} to the Graveyard.`, true);
+                } else if (dest === 'void') {
+                    setVoidZone([card, ...voidZone]);
+                    addLog(`${username} exiled ${card.name} to the Void.`, true);
+                }
+                setActiveMenu(null);
+            };
+
+            const sendHandCardAway = (idx, dest) => {
+                const card = hand[idx];
+                let newHand = [...hand];
+                newHand.splice(idx, 1);
+                setHand(newHand);
+                setSelectedHandIdx(null);
+
+                if (dest === 'grave') {
+                    setGrave([card, ...grave]);
+                    addLog(`${username} discarded ${card.name} to the Graveyard.`, true);
+                } else if (dest === 'void') {
+                    setVoidZone([card, ...voidZone]);
+                    addLog(`${username} exiled ${card.name} from hand to the Void.`, true);
+                }
+            };
+
+            const renderCard = (card, onClick, showMenuParams) => {
+                if (!card) return (
+                    <div onClick={onClick} className="w-full h-full border-2 border-stone-800 border-dashed rounded-lg flex items-center justify-center bg-stone-900/40 hover:bg-stone-800 cursor-pointer transition">
+                        <span className="text-[10px] font-mono text-stone-600 uppercase text-center px-2">Empty Space</span>
+                    </div>
+                );
+
+                return (
+                    <div onClick={() => setActiveMenu(activeMenu ? null : showMenuParams)} className="relative w-full h-full border-2 border-stone-800 rounded-lg bg-stone-850 shadow-md hover:border-amber-600 transition cursor-pointer flex flex-col group overflow-hidden">
+                        {card.image && (
+                            <img src={card.image} alt={card.name} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition" />
+                        )}
+                        <div className="absolute top-0 w-full bg-stone-950/90 p-1 flex justify-between items-center border-b border-stone-800 z-10">
+                            <span className="text-[9px] font-bold text-stone-200 truncate pr-1">{card.name}</span>
+                            <span className="text-[9px] text-amber-500 font-mono bg-stone-900 px-1 rounded">{card.cost}G</span>
+                        </div>
+                        <span className="absolute top-6 left-1 text-[8px] uppercase bg-stone-900/90 px-1 rounded text-stone-400 z-10">{card.type}</span>
+                        
+                        {card.hp !== undefined && (
+                            <div className="absolute bottom-1 left-1 bg-stone-200 text-stone-900 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xs border-2 border-stone-900 shadow-lg z-10">
+                                {card.currentHp}
+                            </div>
+                        )}
+
+                        {activeMenu && activeMenu.id === showMenuParams?.id && (
+                            <div className="absolute inset-0 bg-stone-950/95 z-30 flex flex-col justify-center items-center gap-1.5 p-2">
+                                {card.hp !== undefined && (
+                                    <div className="flex gap-2">
+                                        <button onClick={(e)=>{e.stopPropagation(); modifyHealth(showMenuParams.r, showMenuParams.c, 1)}} className="bg-emerald-900 text-emerald-100 text-[10px] px-2 py-1 rounded">+1 HP</button>
+                                        <button onClick={(e)=>{e.stopPropagation(); modifyHealth(showMenuParams.r, showMenuParams.c, -1)}} className="bg-rose-900 text-rose-100 text-[10px] px-2 py-1 rounded">-1 HP</button>
+                                    </div>
+                                )}
+                                <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'grave', showMenuParams.r, showMenuParams.c)}} className="bg-stone-800 text-stone-200 text-[10px] w-full py-1 rounded">To Graveyard</button>
+                                <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'void', showMenuParams.r, showMenuParams.c)}} className="bg-indigo-900 text-indigo-200 text-[10px] w-full py-1 rounded">To Void</button>
+                                <button onClick={(e)=>{e.stopPropagation(); setActiveMenu(null)}} className="text-[9px] text-stone-500 underline mt-1">Cancel</button>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // ============================================================================
+            // PHASE 1: SETUP SCREEN
+            // ============================================================================
+            if (setupPhase) {
+                return (
+                    <div className="h-screen flex flex-col items-center justify-center p-4 relative">
+                        <div className="bg-stone-900 border border-amber-900/50 p-8 rounded-xl max-w-2xl w-full text-center shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-700 via-amber-500 to-amber-700"></div>
+                            
+                            <div className="flex justify-between items-center mb-6">
+                                <button onClick={() => {
+                                    if(conn) conn.send({ type: 'CONCEDE' });
+                                    onLeaveLobby();
+                                }} className="text-[10px] bg-rose-950/50 text-rose-500 hover:text-rose-300 border border-rose-900/50 hover:bg-rose-900/60 px-3 py-1.5 rounded transition uppercase font-bold tracking-wider">
+                                    Cancel Matchmaking
+                                </button>
+                                <div className="bg-stone-950 border border-stone-800 px-3 py-1.5 rounded-lg shadow flex items-center gap-2">
+                                    <span className="text-[9px] uppercase text-stone-500 font-bold">Room Code</span>
+                                    <span className="text-sm font-mono text-amber-500 font-black">{roomCode}</span>
+                                </div>
+                            </div>
+
+                            <h2 className="text-2xl font-black text-amber-500 uppercase tracking-widest mb-2 mt-2">Vital Initialization</h2>
+                            
+                            <p className="text-stone-400 text-sm mb-6 h-6">
+                                {!connected ? <span className="text-rose-400 animate-pulse">Awaiting opponent P2P connection...</span> : 
+                                 !myVitalLocked ? "Select a slot on your 3x2 grid to position your Vital." : 
+                                 <span className="text-emerald-400">Waiting for opponent to lock in their Vital...</span>}
+                            </p>
+                            
+                            <div className="grid grid-rows-2 gap-3 max-w-md mx-auto mb-8 bg-stone-950/50 p-4 rounded-xl border border-stone-800">
+                                {[0, 1].map(r => (
+                                    <div key={`setup-row-${r}`} className="grid grid-cols-3 gap-3 h-28">
+                                        {[0,1,2].map(c => {
+                                            const isSelected = myVitalPos?.r === r && myVitalPos?.c === c;
+                                            return (
+                                                <div 
+                                                    key={`setup-${r}-${c}`} 
+                                                    onClick={() => !myVitalLocked && connected && setMyVitalPos({r, c})}
+                                                    className={`border-2 rounded-lg transition flex flex-col items-center justify-center relative overflow-hidden
+                                                        ${!connected ? 'border-stone-900 bg-stone-950 cursor-not-allowed' : 
+                                                          isSelected ? 'border-amber-500 bg-amber-950/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 
+                                                          'border-stone-800 bg-stone-950 hover:border-stone-600 cursor-pointer'}`}
+                                                >
+                                                    {isSelected && vitalCardInst ? (
+                                                        <>
+                                                            {vitalCardInst.image && <img src={vitalCardInst.image} className="absolute inset-0 w-full h-full object-cover opacity-50" />}
+                                                            <div className="relative text-[10px] font-bold text-amber-400 text-center px-1 z-10 bg-stone-950/80 rounded p-1">
+                                                                {vitalCardInst.name}<br/>(Targeted)
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-[10px] font-mono text-stone-700">Empty Space [{r},{c}]</span>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button 
+                                onClick={lockVitalPlacement} 
+                                disabled={!connected || myVitalLocked || !myVitalPos}
+                                className={`px-8 py-3 rounded uppercase font-bold tracking-wider transition w-full max-w-md ${
+                                    !connected || myVitalLocked || !myVitalPos ? 'bg-stone-800 text-stone-600 border border-stone-700 cursor-not-allowed' : 'bg-gradient-to-r from-amber-800 to-amber-950 hover:brightness-110 text-amber-100 border border-amber-700/50 shadow-lg'
+                                }`}
+                            >
+                                {myVitalLocked ? 'Vital Locked In' : 'Confirm Placement'}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ============================================================================
+            // PHASE 2: MAIN BOARD SCREEN
+            // ============================================================================
+            return (
+                <div className="h-screen flex flex-col lg:flex-row p-4 gap-4 max-w-[1600px] mx-auto">
+                    
+                    {/* LEFT PANEL: Logs & Trackers */}
+                    <div className="lg:w-64 flex flex-col gap-4">
+                        <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 shadow-md">
+                            <div className="flex justify-between items-center mb-1">
+                                <h2 className="text-xs font-black text-amber-500 uppercase tracking-widest">Room: {roomCode}</h2>
+                                <button onClick={handleConcede} className="text-[9px] bg-rose-950/50 text-rose-500 hover:text-rose-300 border border-rose-900/50 hover:bg-rose-900/60 px-2 py-0.5 rounded transition uppercase font-bold tracking-wider">Concede</button>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 text-[10px] font-mono mb-4">
+                                <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`}></div>
+                                <span className={connected ? 'text-emerald-400' : 'text-rose-400'}>{connected ? 'P2P Linked' : 'Connection Lost'}</span>
+                            </div>
+
+                            <div className="space-y-3 font-mono text-sm mb-4">
+                                <div className="bg-stone-950 border border-stone-850 p-2 rounded flex justify-between items-center">
+                                    <span className="text-[10px] text-rose-400 uppercase">Enemy Gold</span>
+                                    <span className="font-bold text-rose-300">{oppGold}</span>
+                                </div>
+                                <div className="bg-stone-950 border border-stone-850 p-2 rounded flex justify-between items-center">
+                                    <span className="text-[10px] text-amber-500 uppercase">Your Gold</span>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={()=>modifyGold(-1)} className="w-5 h-5 bg-stone-800 hover:bg-stone-700 rounded flex items-center justify-center text-stone-400 transition">-</button>
+                                        <span className="font-bold text-amber-400 w-4 text-center">{gold}</span>
+                                        <button onClick={()=>modifyGold(1)} className="w-5 h-5 bg-stone-800 hover:bg-stone-700 rounded flex items-center justify-center text-stone-400 transition">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-stone-800 pt-3 space-y-2">
+                                <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest block">Enemy Info</span>
+                                <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                                    <div className="bg-stone-950 p-1.5 rounded border border-stone-800 flex justify-between">
+                                        <span className="text-stone-500">Hand</span><span className="text-stone-300">{oppHandCount}</span>
+                                    </div>
+                                    <div className="bg-stone-950 p-1.5 rounded border border-stone-800 flex justify-between">
+                                        <span className="text-stone-500">Deck</span><span className="text-stone-300">{oppDeckCount}</span>
+                                    </div>
+                                    <button onClick={()=>openViewer('Enemy Graveyard', oppGrave)} className="bg-stone-800 hover:bg-stone-700 p-1.5 rounded border border-stone-700 flex justify-between transition">
+                                        <span className="text-stone-400">Grave</span><span className="text-rose-400">{oppGrave.length}</span>
+                                    </button>
+                                    <button onClick={()=>openViewer('Enemy Void', oppVoid)} className="bg-stone-800 hover:bg-stone-700 p-1.5 rounded border border-stone-700 flex justify-between transition">
+                                        <span className="text-stone-400">Void</span><span className="text-indigo-400">{oppVoid.length}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 bg-stone-900 border border-stone-800 rounded-xl p-3 flex flex-col min-h-[150px]">
+                            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest border-b border-stone-800 pb-1 mb-2">Actions Log</span>
+                            <div className="flex-1 overflow-y-auto space-y-1 font-mono text-[9px] text-stone-400 pr-1">
+                                {logs.map((l, i) => <div key={i} className="border-b border-stone-950 pb-0.5">{l}</div>)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* CENTER PANEL: The Battlefield */}
+                    <div className="flex-1 flex flex-col gap-4">
+                        <div className="flex-1 bg-stone-900 border border-stone-800 rounded-xl p-6 flex flex-col justify-between relative shadow-inner">
+                            
+                            <div className="w-full max-w-xl mx-auto">
+                                <span className="text-[10px] font-mono text-rose-500 font-bold uppercase tracking-widest mb-1 block">Enemy Space</span>
+                                <div className="grid grid-rows-2 gap-2">
+                                    {[1, 0].map(r => (
+                                        <div key={`opp-row-${r}`} className="grid grid-cols-3 gap-2 h-28">
+                                            {[0,1,2].map(c => (
+                                                <div key={`opp-${r}-${c}`} className="opacity-70 pointer-events-none">
+                                                    {renderCard(oppGrid[r][c])}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="w-full max-w-3xl mx-auto flex items-center justify-between border-y border-stone-800/60 py-3 my-2 bg-stone-950/30 rounded-xl px-4">
+                                <div className="w-20 h-24 border border-stone-800 rounded bg-stone-900 flex-shrink-0 flex items-center justify-center relative opacity-70 pointer-events-none">
+                                    <span className="absolute -top-3 text-[8px] text-rose-500 uppercase font-mono">Enemy Act</span>
+                                    {oppActSlot ? <div className="text-[9px] text-center p-1 text-stone-300">{oppActSlot.name}</div> : <span className="text-[8px] text-stone-700 font-mono">Empty</span>}
+                                </div>
+                                
+                                <div className="flex flex-col items-center">
+                                    <span className="text-[10px] font-mono text-amber-500 uppercase tracking-widest mb-1">Zone in Play</span>
+                                    <div className="w-28 h-32 flex-shrink-0 relative">
+                                        {renderCard(sharedZone, placeToZone, { type: 'zone', id: 'shared-zone' })}
+                                    </div>
+                                    <span className="text-[8px] text-stone-600 mt-1 italic">Affects both fields</span>
+                                </div>
+
+                                <div className="w-20 h-24 flex-shrink-0 relative">
+                                    <span className="absolute -top-3 text-[8px] text-amber-500 uppercase font-mono">Your Act Slot</span>
+                                    {renderCard(actSlot, placeToAct, { type: 'act', id: 'my-act' })}
+                                </div>
+                            </div>
+
+                            <div className="w-full max-w-xl mx-auto">
+                                <span className="text-[10px] font-mono text-amber-500 font-bold uppercase tracking-widest mb-1 block">Empty Space (Your Grid)</span>
+                                <div className="grid grid-rows-2 gap-2">
+                                    {[0, 1].map(r => (
+                                        <div key={`my-row-${r}`} className="grid grid-cols-3 gap-2 h-28">
+                                            {[0,1,2].map(c => (
+                                                <div key={`my-${r}-${c}`}>
+                                                    {renderCard(myGrid[r][c], () => placeToGrid(r, c), { type: 'grid', r, c, id: `my-${r}-${c}` })}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {/* Hand & Piles */}
+                        <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 flex gap-4 h-48">
+                            <div className="flex flex-col gap-2 w-28 border-r border-stone-800 pr-4">
+                                <button onClick={drawFromDeck} className="flex-1 bg-stone-950 border border-stone-800 hover:border-amber-600 rounded text-xs font-bold text-stone-300 transition flex flex-col items-center justify-center">
+                                    <span>Draw</span>
+                                    <span className="text-[9px] text-stone-500 font-mono">({deck.length})</span>
+                                </button>
+                                <button onClick={()=>openViewer('Your Deck (Randomized View)', deck, true)} className="bg-stone-800 text-[9px] text-stone-400 py-1 rounded hover:text-stone-200 transition">Search Deck</button>
+                                <div className="flex gap-1">
+                                    <button onClick={()=>openViewer('Your Graveyard', grave)} className="flex-1 bg-stone-950 border border-stone-800 hover:border-stone-600 rounded flex flex-col items-center justify-center py-1 transition">
+                                        <span className="text-[9px] font-bold text-stone-500">Grave</span>
+                                        <span className="text-[8px] text-stone-600 font-mono">({grave.length})</span>
+                                    </button>
+                                    <button onClick={()=>openViewer('Your Void', voidZone)} className="flex-1 bg-stone-950 border border-stone-800 hover:border-stone-600 rounded flex flex-col items-center justify-center py-1 transition">
+                                        <span className="text-[9px] font-bold text-indigo-500/70">Void</span>
+                                        <span className="text-[8px] text-stone-600 font-mono">({voidZone.length})</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-x-auto">
+                                <span className="text-[10px] font-mono text-stone-500 uppercase block mb-1">Your Hand</span>
+                                <div className="flex gap-2">
+                                    {hand.map((card, idx) => (
+                                        <div key={card.instanceId} onClick={()=>setSelectedHandIdx(selectedHandIdx===idx ? null : idx)} className={`w-24 h-32 flex-shrink-0 transition-transform cursor-pointer relative ${selectedHandIdx === idx ? '-translate-y-2 ring-2 ring-amber-500 rounded-lg' : ''}`}>
+                                            <div className="w-full h-full border-2 border-stone-800 rounded-lg bg-stone-850 flex flex-col justify-between overflow-hidden relative">
+                                                {card.image && (
+                                                    <img src={card.image} alt={card.name} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                                                )}
+                                                <div className="relative flex justify-between items-center bg-stone-950/90 p-1 border-b border-stone-800 z-10">
+                                                    <span className="text-[8px] font-bold text-stone-200 truncate">{card.name}</span>
+                                                    <span className="text-[8px] text-amber-500 font-mono bg-stone-900 px-1 rounded">{card.cost}G</span>
+                                                </div>
+                                                <span className="relative text-[7px] uppercase text-stone-400 bg-stone-900/90 w-max px-1 ml-1 rounded z-10">{card.type}</span>
+                                                
+                                                {selectedHandIdx === idx && (
+                                                    <div className="absolute inset-0 bg-stone-950/90 z-20 flex flex-col items-center justify-center gap-1 p-2">
+                                                        <button onClick={(e)=>{e.stopPropagation(); sendHandCardAway(idx, 'grave');}} className="bg-stone-800 hover:bg-stone-700 text-stone-200 text-[9px] w-full py-1 rounded border border-stone-700 transition">To Grave</button>
+                                                        <button onClick={(e)=>{e.stopPropagation(); sendHandCardAway(idx, 'void');}} className="bg-indigo-900 hover:bg-indigo-800 text-indigo-200 text-[9px] w-full py-1 rounded border border-indigo-800 transition">To Void</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Universal Viewer Modal */}
+                    {viewModal.isOpen && (
+                        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+                            <div className="bg-stone-900 border border-amber-900/40 p-6 rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-bold text-amber-500">{viewModal.title}</h3>
+                                    <button onClick={()=>setViewModal({ isOpen: false })} className="text-stone-400 hover:text-white border border-stone-700 hover:bg-stone-800 px-3 py-1 rounded transition">Close</button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto grid grid-cols-4 md:grid-cols-6 gap-3 pr-2">
+                                    {(viewModal.onSelect ? [...viewModal.cards].sort(() => Math.random() - 0.5) : viewModal.cards).map((card, i) => {
+                                        const realIdx = viewModal.onSelect ? viewModal.cards.findIndex(c => c.instanceId === card.instanceId) : null;
+                                        return (
+                                            <div key={card.instanceId + i} onClick={()=> viewModal.onSelect ? viewModal.onSelect(realIdx) : null} className={`border border-stone-800 bg-stone-950 p-2 rounded relative overflow-hidden h-24 flex flex-col ${viewModal.onSelect ? 'cursor-pointer hover:border-amber-500 transition' : ''}`}>
+                                                {card.image && <img src={card.image} className="absolute inset-0 w-full h-full object-cover opacity-30" />}
+                                                <div className="relative text-[10px] font-bold text-stone-200 truncate z-10 bg-stone-950/80 p-0.5 rounded">{card.name}</div>
+                                                <div className="relative text-[8px] text-stone-400 mt-1 z-10">{card.type}</div>
+                                            </div>
+                                        );
+                                    })}
+                                    {viewModal.cards.length === 0 && <div className="col-span-full text-center text-stone-600 italic text-sm mt-10">This area is empty.</div>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // ============================================================================
+        // APP ENTRY
+        // ============================================================================
+        const App = () => {
+            const [tab, setTab] = useState('lobby'); 
+            const [roomConfig, setRoomConfig] = useState(null);
+
+            const handleJoin = (code, user, isHost) => {
+                setRoomConfig({ code, user, isHost });
+                setTab('play');
+            };
+
+            const handleLeaveLobby = () => {
+                setRoomConfig(null);
+                setTab('lobby');
+            }
+
+            return (
+                <GameProvider>
+                    <div className="flex flex-col min-h-screen">
+                        <header className="bg-stone-900 border-b border-stone-800 p-3 flex justify-between items-center px-6">
+                            <h1 className="text-sm font-black tracking-widest text-amber-500 uppercase">GoldBurn V4</h1>
+                            {tab !== 'play' && (
+                                <nav className="flex gap-2">
+                                    <button onClick={()=>setTab('lobby')} className={`text-xs px-4 py-1.5 rounded font-bold uppercase tracking-wider transition ${tab==='lobby'?'bg-stone-800 text-stone-200':'text-stone-500 hover:text-stone-300'}`}>Play</button>
+                                    <button onClick={()=>setTab('forge')} className={`text-xs px-4 py-1.5 rounded font-bold uppercase tracking-wider transition ${tab==='forge'?'bg-stone-800 text-stone-200':'text-stone-500 hover:text-stone-300'}`}>Deck Builder</button>
+                                </nav>
+                            )}
+                        </header>
+                        
+                        <main className="flex-1">
+                            {tab === 'forge' && <DeckBuilder />}
+                            {tab === 'lobby' && <Lobby onJoin={handleJoin} />}
+                            {tab === 'play' && (
+                                <GameContext.Consumer>
+                                    {({ customDeck }) => <SandboxBoard roomCode={roomConfig.code} username={roomConfig.user} isHost={roomConfig.isHost} customDeck={customDeck} onLeaveLobby={handleLeaveLobby} />}
+                                </GameContext.Consumer>
+                            )}
+                        </main>
+                    </div>
+                </GameProvider>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
