@@ -203,7 +203,7 @@
                     {/* LEFT PANEL */}
                     <div className="xl:col-span-8 bg-stone-900 border border-amber-900/30 rounded-2xl p-5 shadow-2xl flex flex-col h-[750px]">
                         <div className="border-b border-stone-800 pb-4 mb-4">
-                            <h2 className="text-lg font-bold text-amber-500 uppercase tracking-wide mb-3">V3 Deck Builder</h2>
+                            <h2 className="text-lg font-bold text-amber-500 uppercase tracking-wide mb-3">Deck Builder</h2>
                             <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                                 <input type="text" placeholder="Search by name..." value={search} onChange={(e)=>setSearch(e.target.value)} className="col-span-1 md:col-span-6 bg-stone-950 border border-stone-800 rounded px-3 py-1.5 text-stone-200 outline-none focus:border-amber-600 text-xs" />
                                 <select value={sortOrder} onChange={(e)=>setSortOrder(e.target.value)} className="col-span-1 md:col-span-2 bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-stone-300 outline-none text-xs">
@@ -364,7 +364,7 @@
         };
 
         // ============================================================================
-        // V3 MULTIPLAYER LOBBY
+        // MULTIPLAYER LOBBY
         // ============================================================================
         const Lobby = ({ onJoin }) => {
             const [username, setUsername] = useState('');
@@ -372,8 +372,8 @@
 
             return (
                 <div className="max-w-md mx-auto mt-20 bg-stone-900 border border-amber-900/30 rounded-2xl p-6 shadow-2xl text-center">
-                    <h1 className="text-2xl font-black text-amber-500 uppercase tracking-widest mb-1">GoldBurn V3</h1>
-                    <p className="text-xs text-stone-400 mb-6">Peer-to-Peer Sandbox Mode</p>
+                    <h1 className="text-2xl font-black text-amber-500 uppercase tracking-widest mb-1">GoldBurn</h1>
+                    <p className="text-xs text-stone-400 mb-6">Test Version 1</p>
                     
                     <div className="space-y-4 text-left">
                         <div>
@@ -382,7 +382,7 @@
                         </div>
                         <div>
                             <label className="text-[10px] font-bold text-stone-500 uppercase">Room Code (Leave blank to Create)</label>
-                            <input type="text" value={roomCode} onChange={e=>setRoomCode(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-amber-500 uppercase outline-none focus:border-amber-600" placeholder="e.g. BATTLE99" />
+                            <input type="text" value={roomCode} onChange={e=>setRoomCode(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-amber-500 uppercase outline-none focus:border-amber-600" placeholder="e.g. A12B" />
                         </div>
                         <button onClick={() => onJoin(roomCode || Math.random().toString(36).substring(2,6).toUpperCase(), username || 'Duelist', !roomCode)} className="w-full bg-gradient-to-r from-amber-800 to-amber-950 text-amber-100 font-bold uppercase py-3 rounded-lg text-xs hover:brightness-110 border border-amber-700/50 transition">
                             {roomCode ? 'Join Match' : 'Create Match'}
@@ -393,7 +393,7 @@
         };
 
         // ============================================================================
-        // V3 SANDBOX BOARD
+        // v1 SANDBOX BOARD
         // ============================================================================
         const SandboxBoard = ({ roomCode, username, isHost, customDeck, onLeaveLobby, isSoloTest = false }) => {
             const [peer, setPeer] = useState(null);
@@ -427,6 +427,7 @@
             
             const [selectedHandIdx, setSelectedHandIdx] = useState(null);
             const [inspectedCard, setInspectedCard] = useState(null);
+            const [lockedInspectorId, setLockedInspectorId] = useState(null);
             const [isInspectorOpen, setIsInspectorOpen] = useState(true);
             const [showMarkersUI, setShowMarkersUI] = useState(false);
             const [diceType, setDiceType] = useState('6');
@@ -435,7 +436,7 @@
             const [activeMenu, setActiveMenu] = useState(null);
             const [zoomedCard, setZoomedCard] = useState(null);
             const [modalSelectedIdx, setModalSelectedIdx] = useState(null);
-            const [movingCard, setMovingCard] = useState(null); // stores {r, c, type} of the field card being moved
+            const [movingCard, setMovingCard] = useState(null); 
 
             const [popupMsg, setPopupMsg] = useState(null);
             const popupTimer = useRef(null);
@@ -468,16 +469,16 @@
                     setOppVitalLocked(true);
                     addLog("Offline Sandbox Mode initialized. Testing your deck layout.");
                 } else {
-                    addLog(`Game Engine V3 Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`);
+                    addLog(`Game Engine v1 Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`);
                 }
             }, []);
 
             useEffect(() => {
                 if (isSoloTest) return;
-                const p = new Peer(isHost ? `v3-${roomCode}` : null);
+                const p = new Peer(isHost ? `v1-${roomCode}` : null);
                 p.on('open', id => {
                     if (!isHost) {
-                        const c = p.connect(`v3-${roomCode}`);
+                        const c = p.connect(`v1-${roomCode}`);
                         setupConnection(c);
                     }
                 });
@@ -745,6 +746,7 @@
                 
                 setHand(newHand);
                 setSelectedHandIdx(null);
+                setLockedInspectorId(null);
                 broadcastGrid(newGrid);
                 addLog(`${username} deployed ${card.name} to an Empty Space.`, true);
             };
@@ -758,6 +760,7 @@
                 newHand.splice(selectedHandIdx, 1);
                 setHand(newHand);
                 setSelectedHandIdx(null);
+                setLockedInspectorId(null);
 
                 const zonedCard = { ...card, ownerHost: isHost };
                 broadcastZone(zonedCard);
@@ -773,6 +776,7 @@
                 newHand.splice(selectedHandIdx, 1);
                 setHand(newHand);
                 setSelectedHandIdx(null);
+                setLockedInspectorId(null);
                 broadcastAct(card);
                 addLog(`${username} played ${card.type}: ${card.name}.`, true);
             };
@@ -851,6 +855,7 @@
                     }
                 }
                 setActiveMenu(null);
+                setLockedInspectorId(null);
             };
 
             const sendHandCardAway = (idx, dest) => {
@@ -859,6 +864,7 @@
                 newHand.splice(idx, 1);
                 setHand(newHand);
                 setSelectedHandIdx(null);
+                setLockedInspectorId(null);
 
                 if (dest === 'grave') {
                     setGrave([card, ...grave]);
@@ -877,6 +883,13 @@
                 const id = inspectedCard.instanceId;
                 return myGrid.flat().some(c=>c?.instanceId===id) || actSlot?.instanceId===id || sharedZone?.instanceId===id;
             }, [inspectedCard, myGrid, actSlot, sharedZone]);
+
+            const clearInteractions = () => {
+                setActiveMenu(null);
+                setMovingCard(null);
+                setLockedInspectorId(null);
+                setSelectedHandIdx(null);
+            };
 
             const renderCardLayout = (card, showMenuParams) => {
                 return (
@@ -928,7 +941,7 @@
                                 <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'grave', showMenuParams.r, showMenuParams.c)}} className="bg-stone-800 hover:bg-stone-700 transition text-stone-200 text-[10px] w-full py-1 rounded">To Graveyard</button>
                                 <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'void', showMenuParams.r, showMenuParams.c)}} className="bg-indigo-900 hover:bg-indigo-800 transition text-indigo-200 text-[10px] w-full py-1 rounded">To Void</button>
                                 <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'deck', showMenuParams.r, showMenuParams.c)}} className="bg-emerald-900 hover:bg-emerald-800 transition text-emerald-200 text-[10px] w-full py-1 rounded">To Deck</button>
-                                <button onClick={(e)=>{e.stopPropagation(); setActiveMenu(null)}} className="text-[9px] text-stone-500 hover:text-stone-300 transition underline mt-1">Cancel</button>
+                                <button onClick={(e)=>{e.stopPropagation(); setActiveMenu(null); setLockedInspectorId(null);}} className="text-[9px] text-stone-500 hover:text-stone-300 transition underline mt-1">Cancel</button>
                             </div>
                         )}
                     </div>
@@ -941,14 +954,16 @@
                 if (!card) return (
                     <div 
                         onClick={(e) => { 
+                            e.stopPropagation();
                             if (isMoveTarget) {
                                 executeMove(showMenuParams.r, showMenuParams.c);
                             } else {
+                                setLockedInspectorId(null);
                                 if(!showMenuParams || showMenuParams.type==='grid') setInspectedCard(null); 
                                 if(onClick) onClick(e); 
                             }
                         }} 
-                        onMouseEnter={() => { if(!isMoveTarget) setInspectedCard(null); }}
+                        onMouseEnter={() => { if(!isMoveTarget && !lockedInspectorId) setInspectedCard(null); }}
                         className={`w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center transition-all hover:scale-105 ${isMoveTarget ? 'border-emerald-500 bg-emerald-900/30 cursor-pointer animate-pulse' : 'border-stone-800 bg-stone-900/40 hover:bg-stone-800 cursor-pointer'}`}
                     >
                         <span className="text-[10px] font-mono text-stone-600 uppercase text-center px-2">
@@ -960,11 +975,19 @@
                 return (
                     <div 
                         onClick={(e) => { 
-                            setInspectedCard(card);
-                            if (onClick) onClick(e);
-                            if (showMenuParams) setActiveMenu(activeMenu ? null : showMenuParams);
+                            e.stopPropagation();
+                            if (lockedInspectorId === card.instanceId && (!showMenuParams || activeMenu?.id === showMenuParams.id)) {
+                                setLockedInspectorId(null);
+                                if (showMenuParams) setActiveMenu(null);
+                            } else {
+                                setInspectedCard(card);
+                                setLockedInspectorId(card.instanceId);
+                                if (onClick) onClick(e);
+                                if (showMenuParams) setActiveMenu(showMenuParams);
+                                setIsInspectorOpen(true);
+                            }
                         }} 
-                        onMouseEnter={() => { if(card) setInspectedCard(card); }}
+                        onMouseEnter={() => { if(card && !lockedInspectorId) setInspectedCard(card); }}
                         className="w-full h-full cursor-pointer transition-all hover:scale-105 relative"
                     >
                         {renderCardLayout(card, showMenuParams)}
@@ -1102,10 +1125,10 @@
                                         <div className="bg-stone-950 p-1.5 rounded border border-stone-800 flex justify-between">
                                             <span className="text-stone-500">Deck</span><span className="text-stone-300">{oppDeckCount}</span>
                                         </div>
-                                        <button onClick={()=>openViewer('Enemy Graveyard', oppGrave, 'oppGrave')} className="bg-stone-800 hover:bg-stone-700 p-1.5 rounded border border-stone-700 flex justify-between transition">
+                                        <button onClick={(e)=>{e.stopPropagation(); openViewer('Enemy Graveyard', oppGrave, 'oppGrave');}} className="bg-stone-800 hover:bg-stone-700 p-1.5 rounded border border-stone-700 flex justify-between transition">
                                             <span className="text-stone-400">Grave</span><span className="text-rose-400">{oppGrave.length}</span>
                                         </button>
-                                        <button onClick={()=>openViewer('Enemy Void', oppVoid, 'oppVoid')} className="bg-stone-800 hover:bg-stone-700 p-1.5 rounded border border-stone-700 flex justify-between transition">
+                                        <button onClick={(e)=>{e.stopPropagation(); openViewer('Enemy Void', oppVoid, 'oppVoid');}} className="bg-stone-800 hover:bg-stone-700 p-1.5 rounded border border-stone-700 flex justify-between transition">
                                             <span className="text-stone-400">Void</span><span className="text-indigo-400">{oppVoid.length}</span>
                                         </button>
                                     </div>
@@ -1143,7 +1166,7 @@
                     </div>
 
                     {/* CENTER PANEL: The Battlefield */}
-                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-w-0">
+                    <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-w-0" onClick={clearInteractions}>
                         <div className="flex-1 bg-stone-900 border border-stone-800 rounded-xl p-4 flex flex-col justify-center relative shadow-inner overflow-x-auto min-h-[500px]">
                             
                             {!isSoloTest && (
@@ -1165,7 +1188,7 @@
 
                             <div className={`w-full max-w-3xl mx-auto flex items-center justify-between border-y border-stone-800/60 py-3 my-4 bg-stone-950/30 rounded-xl px-4 min-w-[500px] ${isSoloTest ? 'mt-auto' : ''}`}>
                                 {!isSoloTest ? (
-                                    <div onClick={() => { if(oppActSlot) { setInspectedCard(oppActSlot); setIsInspectorOpen(true); } }} className="w-[80px] h-[112px] border-2 border-stone-800 border-dashed rounded-lg bg-stone-900/40 flex-shrink-0 flex items-center justify-center relative opacity-70 cursor-pointer">
+                                    <div onClick={(e) => { e.stopPropagation(); if(oppActSlot) { setInspectedCard(oppActSlot); setLockedInspectorId(oppActSlot.instanceId); setIsInspectorOpen(true); } }} className="w-[80px] h-[112px] border-2 border-stone-800 border-dashed rounded-lg bg-stone-900/40 flex-shrink-0 flex items-center justify-center relative opacity-70 cursor-pointer">
                                         <span className="absolute -top-3 text-[8px] text-rose-500 uppercase font-mono">Enemy Act</span>
                                         {oppActSlot ? renderCardLayout(oppActSlot) : <span className="text-[8px] text-stone-700 font-mono uppercase">Empty</span>}
                                     </div>
@@ -1207,17 +1230,17 @@
                         {/* Hand & Piles */}
                         <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 flex gap-4 min-h-[160px]">
                             <div className="flex flex-col gap-2 w-28 border-r border-stone-800 pr-4 shrink-0">
-                                <button onClick={drawFromDeck} className="flex-1 bg-stone-950 border border-stone-800 hover:border-amber-600 rounded text-xs font-bold text-stone-300 transition flex flex-col items-center justify-center">
+                                <button onClick={(e)=>{e.stopPropagation(); drawFromDeck();}} className="flex-1 bg-stone-950 border border-stone-800 hover:border-amber-600 rounded text-xs font-bold text-stone-300 transition flex flex-col items-center justify-center">
                                     <span>Draw</span>
                                     <span className="text-[9px] text-stone-500 font-mono">({deck.length})</span>
                                 </button>
-                                <button onClick={()=>openViewer('Your Deck', deck, 'deck', true)} className="bg-stone-800 text-[9px] text-stone-400 py-1 rounded hover:text-stone-200 transition">Search Deck</button>
+                                <button onClick={(e)=>{e.stopPropagation(); openViewer('Your Deck', deck, 'deck', true);}} className="bg-stone-800 text-[9px] text-stone-400 py-1 rounded hover:text-stone-200 transition">Search Deck</button>
                                 <div className="flex gap-1">
-                                    <button onClick={()=>openViewer('Your Graveyard', grave, 'myGrave')} className="flex-1 bg-stone-950 border border-stone-800 hover:border-stone-600 rounded flex flex-col items-center justify-center py-1 transition">
+                                    <button onClick={(e)=>{e.stopPropagation(); openViewer('Your Graveyard', grave, 'myGrave');}} className="flex-1 bg-stone-950 border border-stone-800 hover:border-stone-600 rounded flex flex-col items-center justify-center py-1 transition">
                                         <span className="text-[9px] font-bold text-stone-500">Grave</span>
                                         <span className="text-[8px] text-stone-600 font-mono">({grave.length})</span>
                                     </button>
-                                    <button onClick={()=>openViewer('Your Void', voidZone, 'myVoid')} className="flex-1 bg-stone-950 border border-stone-800 hover:border-stone-600 rounded flex flex-col items-center justify-center py-1 transition">
+                                    <button onClick={(e)=>{e.stopPropagation(); openViewer('Your Void', voidZone, 'myVoid');}} className="flex-1 bg-stone-950 border border-stone-800 hover:border-stone-600 rounded flex flex-col items-center justify-center py-1 transition">
                                         <span className="text-[9px] font-bold text-indigo-500/70">Void</span>
                                         <span className="text-[8px] text-stone-600 font-mono">({voidZone.length})</span>
                                     </button>
@@ -1229,8 +1252,19 @@
                                 <div className="flex gap-2">
                                     {hand.map((card, idx) => (
                                         <div key={card.instanceId} 
-                                             onClick={() => { setSelectedHandIdx(selectedHandIdx === idx ? null : idx); setInspectedCard(card); setIsInspectorOpen(true); }} 
-                                             onMouseEnter={() => setInspectedCard(card)}
+                                             onClick={(e) => { 
+                                                 e.stopPropagation();
+                                                 if (selectedHandIdx === idx) {
+                                                     setSelectedHandIdx(null);
+                                                     setLockedInspectorId(null);
+                                                 } else {
+                                                     setSelectedHandIdx(idx);
+                                                     setInspectedCard(card);
+                                                     setLockedInspectorId(card.instanceId);
+                                                     setIsInspectorOpen(true);
+                                                 }
+                                             }} 
+                                             onMouseEnter={() => { if(!lockedInspectorId) setInspectedCard(card); }}
                                              className={`w-[80px] h-[112px] flex-shrink-0 transition-transform cursor-pointer relative hover:scale-105 ${selectedHandIdx === idx ? '-translate-y-2 ring-2 ring-amber-500 rounded-lg' : ''}`}>
                                             <div className="w-full h-full border-2 border-stone-800 rounded-lg bg-stone-850 flex flex-col justify-between overflow-hidden relative">
                                                 {card.image && (
@@ -1274,6 +1308,7 @@
                             <div className="flex flex-col items-center">
                                 <span className="text-xs font-bold text-stone-500 uppercase tracking-widest border-b border-stone-800 w-full text-center pb-2 mb-4 shrink-0 flex items-center justify-center gap-2">
                                     Card Inspector
+                                    {lockedInspectorId && <span className="text-amber-500 text-[10px]" title="Locked (Click background to clear)">🔒</span>}
                                     {inspectedCard && (
                                         <svg onClick={()=>setZoomedCard(inspectedCard)} className="w-4 h-4 text-stone-400 hover:text-amber-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                     )}
