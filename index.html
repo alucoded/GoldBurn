@@ -437,11 +437,11 @@
                     <div className="space-y-4 text-left">
                         <div>
                             <label className="text-[10px] font-bold text-stone-500 uppercase">Username</label>
-                            <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-stone-200 outline-none focus:border-amber-600" placeholder="Example: Bandit Captain" />
+                            <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-stone-200 outline-none focus:border-amber-600" placeholder="Example: aviyarn" />
                         </div>
                         <div>
                             <label className="text-[10px] font-bold text-stone-500 uppercase">Room Code (Leave blank to Create)</label>
-                            <input type="text" value={roomCode} onChange={e=>setRoomCode(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-amber-500 uppercase outline-none focus:border-amber-600" placeholder="On top right of waiting room" />
+                            <input type="text" value={roomCode} onChange={e=>setRoomCode(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-amber-500 outline-none focus:border-amber-600" placeholder="On top right of waiting room" />
                         </div>
                         <button onClick={() => onJoin(roomCode || Math.random().toString(36).substring(2,6).toUpperCase(), username || 'Duelist', !roomCode)} className="w-full bg-gradient-to-r from-amber-800 to-amber-950 text-amber-100 font-bold uppercase py-3 rounded-lg text-xs hover:brightness-110 border border-amber-700/50 transition">
                             {roomCode ? 'Join Match' : 'Create Match'}
