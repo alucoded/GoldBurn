@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoldBurn V3 Sandbox</title>
+    <title>GoldBurn</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone@7.24.0/babel.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -23,7 +23,7 @@
         import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
 
         // ============================================================================
-        // V3 CARD DATABASE
+        // BA Test CARD DATABASE
         // ============================================================================
         const MASTER_CARDS = [
             { id: 'heart_soul', name: 'Heart and Soul', type: 'Vital', limit: 1, hp: 20, cost: 0, set: 'Core', image: 'Heart&Soul.png', description: 'Can make up to three actions per turn. Unaffected by move effects.' },
@@ -78,7 +78,7 @@
 
         const GameProvider = ({ children }) => {
             const [customDeck, setCustomDeck] = useState(() => {
-                const stored = localStorage.getItem('v3_saved_deck');
+                const stored = localStorage.getItem('v1_saved_deck');
                 if (stored) {
                     const parsed = JSON.parse(stored);
                     const cleaned = {};
@@ -99,7 +99,7 @@
 
                     const next = { ...prev, [id]: nextQty };
                     if (next[id] === 0) delete next[id];
-                    localStorage.setItem('v3_saved_deck', JSON.stringify(next));
+                    localStorage.setItem('v1_saved_deck', JSON.stringify(next));
                     return next;
                 });
             };
@@ -114,7 +114,7 @@
                     }
                 }
                 setCustomDeck(cleaned);
-                localStorage.setItem('v3_saved_deck', JSON.stringify(cleaned));
+                localStorage.setItem('v1_saved_deck', JSON.stringify(cleaned));
             };
 
             return (
@@ -203,7 +203,7 @@
                     {/* LEFT PANEL */}
                     <div className="xl:col-span-8 bg-stone-900 border border-amber-900/30 rounded-2xl p-5 shadow-2xl flex flex-col h-[750px]">
                         <div className="border-b border-stone-800 pb-4 mb-4">
-                            <h2 className="text-lg font-bold text-amber-500 uppercase tracking-wide mb-3">V3 Deck Builder</h2>
+                            <h2 className="text-lg font-bold text-amber-500 uppercase tracking-wide mb-3">Deck Builder</h2>
                             <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                                 <input type="text" placeholder="Search by name..." value={search} onChange={(e)=>setSearch(e.target.value)} className="col-span-1 md:col-span-6 bg-stone-950 border border-stone-800 rounded px-3 py-1.5 text-stone-200 outline-none focus:border-amber-600 text-xs" />
                                 <select value={sortOrder} onChange={(e)=>setSortOrder(e.target.value)} className="col-span-1 md:col-span-2 bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-stone-300 outline-none text-xs">
@@ -364,7 +364,7 @@
         };
 
         // ============================================================================
-        // V3 MULTIPLAYER LOBBY
+        // MULTIPLAYER LOBBY
         // ============================================================================
         const Lobby = ({ onJoin }) => {
             const [username, setUsername] = useState('');
@@ -372,17 +372,17 @@
 
             return (
                 <div className="max-w-md mx-auto mt-20 bg-stone-900 border border-amber-900/30 rounded-2xl p-6 shadow-2xl text-center">
-                    <h1 className="text-2xl font-black text-amber-500 uppercase tracking-widest mb-1">V3 Engine</h1>
-                    <p className="text-xs text-stone-400 mb-6">Peer-to-Peer Sandbox Mode</p>
+                    <h1 className="text-2xl font-black text-amber-500 uppercase tracking-widest mb-1">GoldBurn Test</h1>
+                    <p className="text-xs text-stone-400 mb-6">This is a test so expect errors and stuff like that.</p>
                     
                     <div className="space-y-4 text-left">
                         <div>
-                            <label className="text-[10px] font-bold text-stone-500 uppercase">Temp Username</label>
-                            <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-stone-200 outline-none focus:border-amber-600" placeholder="Example: Bandit Captain" />
+                            <label className="text-[10px] font-bold text-stone-500 uppercase">Username</label>
+                            <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-stone-200 outline-none focus:border-amber-600" placeholder="Example: aviyarn" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-bold text-stone-500 uppercase">Room Code (Leave blank to Create)</label>
-                            <input type="text" value={roomCode} onChange={e=>setRoomCode(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-amber-500 uppercase outline-none focus:border-amber-600" placeholder="e.g. BATTLE99" />
+                            <label className="text-[10px] font-bold text-stone-500 uppercase">Room Code</label>
+                            <input type="text" value={roomCode} onChange={e=>setRoomCode(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-amber-500 uppercase outline-none focus:border-amber-600" placeholder="Leave blank to Create" />
                         </div>
                         <button onClick={() => onJoin(roomCode || Math.random().toString(36).substring(2,6).toUpperCase(), username || 'Duelist', !roomCode)} className="w-full bg-gradient-to-r from-amber-800 to-amber-950 text-amber-100 font-bold uppercase py-3 rounded-lg text-xs hover:brightness-110 border border-amber-700/50 transition">
                             {roomCode ? 'Join Match' : 'Create Match'}
@@ -393,7 +393,7 @@
         };
 
         // ============================================================================
-        // V3 SANDBOX BOARD
+        // v1 SANDBOX BOARD
         // ============================================================================
         const SandboxBoard = ({ roomCode, username, isHost, customDeck, onLeaveLobby, isSoloTest = false }) => {
             const [peer, setPeer] = useState(null);
@@ -462,16 +462,16 @@
                     setOppVitalLocked(true);
                     addLog("Offline Sandbox Mode initialized. Testing your deck layout.");
                 } else {
-                    addLog(`Game Engine V3 Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`);
+                    addLog(`Game Engine v1 Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`);
                 }
             }, []);
 
             useEffect(() => {
                 if (isSoloTest) return;
-                const p = new Peer(isHost ? `v3-${roomCode}` : null);
+                const p = new Peer(isHost ? `v1-${roomCode}` : null);
                 p.on('open', id => {
                     if (!isHost) {
-                        const c = p.connect(`v3-${roomCode}`);
+                        const c = p.connect(`v1-${roomCode}`);
                         setupConnection(c);
                     }
                 });
@@ -913,10 +913,10 @@
                                 </div>
                             </div>
 
-                            <h2 className="text-2xl font-black text-amber-500 uppercase tracking-widest mb-2 mt-2">Vital Initialization</h2>
+                            <h2 className="text-2xl font-black text-amber-500 uppercase tracking-widest mb-2 mt-2">PLACE YOUR VITAL</h2>
                             
                             <p className="text-stone-400 text-sm mb-6 h-6">
-                                {!connected ? <span className="text-rose-400 animate-pulse">Awaiting opponent P2P connection...</span> : 
+                                {!connected ? <span className="text-rose-400 animate-pulse">(The room code is on the top right) Awating other Player...</span> : 
                                  !myVitalLocked ? "Select a slot on your 3x2 grid to position your Vital." : 
                                  <span className="text-emerald-400">Waiting for opponent to lock in their Vital...</span>}
                             </p>
@@ -1353,7 +1353,7 @@
                 <GameProvider>
                     <div className="flex flex-col min-h-screen">
                         <header className="bg-stone-900 border-b border-stone-800 p-3 flex justify-between items-center px-6">
-                            <h1 className="text-sm font-black tracking-widest text-amber-500 uppercase">GoldBurn V3</h1>
+                            <h1 className="text-sm font-black tracking-widest text-amber-500 uppercase">GoldBurn v1</h1>
                             {(tab === 'lobby' || tab === 'forge') && (
                                 <nav className="flex gap-2">
                                     <button onClick={()=>setTab('lobby')} className={`text-xs px-4 py-1.5 rounded font-bold uppercase tracking-wider transition ${tab==='lobby'?'bg-stone-800 text-stone-200':'text-stone-500 hover:text-stone-300'}`}>Play</button>
