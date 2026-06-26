@@ -60,19 +60,18 @@
         // ============================================================================
         // Devout Patronage
         // ============================================================================
-            // { id: 'pocket_change', name: 'Pocket Change', type: 'Skill', limit: 3, cost: 0, set: 'Devout Patronage', image: 'PocketChange.jpg', description: 'This skill can be used thrice per game and once per turn. Gain 1 gold. This skill cannot be used on the first turn of the game.' },
             { id: 'mander_mander', name: 'ManderMander', type: 'Troop', limit: 3, hp: 2, cost: 2, set: 'Devout Patronage', image: 'ManderMander.jpg', description: 'Withstand. When this troop is damaged, place 1 poison counter on the attacker. Chomp (1)- Heal self 1, place 1 poison counter on target. Tail 2 (2)- ManderMander gains 1 Withstand marker. ":D"' },
             { id: 'four_fortunes_fauna', name: 'Four Fortunes Fauna', type: 'Building', limit: 3, hp: 3, cost: 3, set: 'Devout Patronage', image: '4FortunesFauna.jpg', description: 'Gold grows on trees (1)- gain 2 gold.' },
             { id: 'abominable_vessel', name: 'Abominable Vessel', type: 'Troop', limit: 3, hp: 7, cost: 5, set: 'Devout Patronage', image: 'AbominableVessel.jpg', description: 'Offering I. Expel the card used for this card\'s offering instead of sending it to the GY. If this card leaves the field: (Hard Single) Summon the card that was exiled for this card\'s offering for no cost. It cannot attack. Claw Crush (1)- deal 5 dmg.' },
-            { id: 'bandit', name: 'Bandit', type: 'Troop', limit: 3, hp: 3, cost: 3, set: 'Devout Patronage', image: 'Bandit.jpg', description: 'Slash (0) - Deal 3 dmg. Knife Toss (2) - Deal 3 dmg. "The first of many."' },
-            { id: 'bandit_widowmaker', name: 'Bandit Widowmaker', type: 'Troop', limit: 3, hp: 7, cost: 5, set: 'Devout Patronage', image: 'BanditWindowmaker.jpg', description: 'Slay (1)- Deal 5 dmg. Bounty (2)- Deal 3 dmg. if this move destroys an enemy, gain 3 gold.' },
+            { id: 'bandit_dp', name: 'Bandit (DP)', name: 'Bandit', type: 'Troop', limit: 3, hp: 3, cost: 3, set: 'Devout Patronage', image: 'Bandit.jpg', description: 'Slash (0) - Deal 3 dmg. Knife Toss (2) - Deal 3 dmg. "The first of many."' },
+            { id: 'bandit_widowmaker_dp', name: 'Bandit Widowmaker (DP)', type: 'Troop', limit: 3, hp: 7, cost: 5, set: 'Devout Patronage', image: 'BanditWindowmaker.jpg', description: 'Slay (1)- Deal 5 dmg. Bounty (2)- Deal 3 dmg. if this move destroys an enemy, gain 3 gold.' },
             { id: 'client_of_the_patron', name: 'Client of the Patron', type: 'Troop', limit: 3, hp: 4, cost: 2, set: 'Devout Patronage', image: 'ClientofthePatron.jpg', description: 'This card can be used as two offerings for the summon of a "The Patron" card. If a Deity "The Patron" card is destroyed by your opponent while this card is in your GY: you can summon this card from your GY for no cost. Torch (0)- Deal 1 dmg. "you will venture further into the chamber in search of him."' },
             { id: 'dead_of_winter', name: 'Dead of Winter', type: 'Act', limit: 3, cost: 6, set: 'Devout Patronage', image: 'DeadofWinter.jpg', description: 'Slow. Destroy all non-vital cards your opponent controls. "and then. silence."' },
-            { id: 'deus_hexer', name: 'Deus Hexer', type: 'Troop', limit: 3, hp: 3, cost: 5, set: 'Devout Patronage', image: 'DeusHexer.jpg', description: 'When a vital troop you control takes damage, you can summon this card from your hand for no cost. Hex (0)- deal 2 dmg' },
+            { id: 'deus_hexer_dp', name: 'Deus Hexer (DP)', type: 'Troop', limit: 3, hp: 3, cost: 5, set: 'Devout Patronage', image: 'DeusHexer.jpg', description: 'When a vital troop you control takes damage, you can summon this card from your hand for no cost. Hex (0)- deal 2 dmg' },
             { id: 'envoy_of_the_patron', name: 'Envoy of the Patron', type: 'Troop', limit: 3, hp: 4, cost: 2, set: 'Devout Patronage', image: 'EnvoyofthePatron.jpg', description: 'If this card is offered: The Summoned card enters the field with a strength marker. If the summoned card was a "The Patron" card, it gains 2 strength markers instead. Envoy\'s Cut (0)- Deal 1 dmg. "First his envoy will tell you of your selection."' },
             { id: 'malsym_the_patron', name: 'Malsym, The Patron', type: 'Troop', limit: 3, hp: 12, cost: 6, set: 'Devout Patronage', image: 'Malsym,ThePatron.jpg', description: 'Offering II. If a "The Patron" card was offered for this card\'s summon, you can activate this effect once while this card is on the field: Target 1 non-vital card your opponent controls; take control of that target. Cause Writhing (1)- Deal 5 dmg. "And Malsym will bestow upon you his most divine of blessings: Submission."' },
             { id: 'mesmershroom', name: 'Mesmershroom', type: 'Troop', limit: 3, hp: 2, cost: 1, set: 'Devout Patronage', image: 'Mesmershroom.jpg', description: 'Hypnotize (x)- Target a non-vital card your opponent controls that costs x; Take control of it until the end of the turn. Decompose (1)- deal 2 dmg. if this attack destroys a card, add a "Mesmershroom" from your deck or GY to your hand.' },
-            { id: 'noble_sacrifice', name: 'Noble Sacrifice', type: 'Act (Slow)', limit: 3, cost: 2, set: 'Devout Patronage', image: 'NobleSac.jpg', description: 'Destroy target non-vital card you control, and if you do, destroy target non-vital card your opponent controls.' },
+            { id: 'noble_sacrifice_dp', name: 'Noble Sacrifice (DP)', type: 'Act (Slow)', limit: 3, cost: 2, set: 'Devout Patronage', image: 'NobleSac.jpg', description: 'Destroy target non-vital card you control, and if you do, destroy target non-vital card your opponent controls.' },
             { id: 'oddly_specific_hunter', name: 'Oddly, Specific Hunter', type: 'Troop', limit: 3, hp: 5, cost: 3, set: 'Devout Patronage', image: 'Oddly,SpecificHunter.jpg', description: '(Summon): Declare a subtype; if this card attacks or is attacked by a non-vital card with the declared subtype: expel that card. If this card is attacked by a card without the declared subtype: expel this card. Spear Jab (1)- Deal 1 dmg.' },
             { id: 'pawn_of_4_sides', name: 'Pawn of 4 Sides', type: 'Troop', limit: 3, hp: 1, cost: 1, set: 'Devout Patronage', image: 'Pawnof4Sides.jpg', description: 'Pawns Mighty Strike (1)- roll a d4 and deal that much dmg. if you roll a 4, re-roll and double the result instead. "I will do my best for you my liege"' },
             { id: 'priestess_of_the_patron', name: 'Priestess of the Patron', type: 'Troop', limit: 3, hp: 5, cost: 3, set: 'Devout Patronage', image: 'PriestessofthePatron.jpg', description: '(Summon):(Hard Single) Target 1 Cultist "The Patron" card in your GY that was not burned this turn except "Priestess Of The Patron"; Resurrect that target. If this card is offered: you can add 1 Cultist from your GY to your hand. Priestess Blessing (0)- Heal a "The Patron" card you control 3, except this card. His priestess will prepare you for the ritual' },
@@ -89,7 +88,6 @@
         ];
 
         const STARTER_DECKS = {
-            //"test1": { 'heart_soul': 1, 'TEST': 3 },
             "Devout Patronage Starter": {
                 'voice_of_the_patron': 1,
                 'vacation_in_the_abyss': 1,
@@ -98,18 +96,18 @@
                 'uproot': 1,
                 'tax_collection': 1,
                 'ritual_of_the_patron': 1,
-                'noble_sacrifice': 1,
+                'noble_sacrifice_dp': 1,
                 'envoy_of_the_patron': 3,
                 'malsym_the_patron': 2,
                 'priestess_of_the_patron': 1,
                 'oddly_specific_hunter': 1,
                 'abominable_vessel': 1,
                 'pawn_of_4_sides': 1,
-                'deus_hexer': 1,
+                'deus_hexer_dp': 1,
                 'mesmershroom': 1,
                 'mander_mander': 1,
-                'bandit': 1,
-                'bandit_widowmaker': 1,
+                'bandit_dp': 1,
+                'bandit_widowmaker_dp': 1,
                 'client_of_the_patron': 2,
                 'urn_of_offerings': 2,
                 'four_fortunes_fauna': 1,
@@ -160,7 +158,7 @@
 
                     const next = { ...prev, [id]: nextQty };
                     if (next[id] === 0) delete next[id];
-                    localStorage.setItem('v1_saved_deck', JSON.stringify(next));
+                    localStorage.setItem('v3_saved_deck', JSON.stringify(next));
                     return next;
                 });
             };
@@ -175,7 +173,7 @@
                     }
                 }
                 setCustomDeck(cleaned);
-                localStorage.setItem('v1_saved_deck', JSON.stringify(cleaned));
+                localStorage.setItem('v3_saved_deck', JSON.stringify(cleaned));
             };
 
             return (
@@ -264,7 +262,7 @@
                     {/* LEFT PANEL */}
                     <div className="xl:col-span-8 bg-stone-900 border border-amber-900/30 rounded-2xl p-5 shadow-2xl flex flex-col h-[750px]">
                         <div className="border-b border-stone-800 pb-4 mb-4">
-                            <h2 className="text-lg font-bold text-amber-500 uppercase tracking-wide mb-3">v1 Deck Builder</h2>
+                            <h2 className="text-lg font-bold text-amber-500 uppercase tracking-wide mb-3">V3 Deck Builder</h2>
                             <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                                 <input type="text" placeholder="Search by name..." value={search} onChange={(e)=>setSearch(e.target.value)} className="col-span-1 md:col-span-6 bg-stone-950 border border-stone-800 rounded px-3 py-1.5 text-stone-200 outline-none focus:border-amber-600 text-xs" />
                                 <select value={sortOrder} onChange={(e)=>setSortOrder(e.target.value)} className="col-span-1 md:col-span-2 bg-stone-950 border border-stone-800 rounded px-2 py-1.5 text-stone-300 outline-none text-xs">
@@ -439,7 +437,7 @@
                     <div className="space-y-4 text-left">
                         <div>
                             <label className="text-[10px] font-bold text-stone-500 uppercase">Username</label>
-                            <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-stone-200 outline-none focus:border-amber-600" placeholder="Example: aviyarn" />
+                            <input type="text" value={username} onChange={e=>setUsername(e.target.value)} className="w-full bg-stone-950 border border-stone-800 rounded px-3 py-2 text-stone-200 outline-none focus:border-amber-600" placeholder="Example: Bandit Captain" />
                         </div>
                         <div>
                             <label className="text-[10px] font-bold text-stone-500 uppercase">Room Code (Leave blank to Create)</label>
@@ -508,16 +506,18 @@
             useEffect(() => {
                 let generatedDeck = [];
                 Object.entries(customDeck).forEach(([id, qty]) => {
-                    if (id === 'heart_soul') return; 
                     const card = MASTER_CARDS.find(c => c.id === id);
                     if(card) {
+                        if (card.type === 'Vital') return; // Isolated configuration
                         for(let i=0; i<qty; i++) generatedDeck.push({ ...card, instanceId: Math.random().toString(36).substr(2,9), currentHp: card.hp });
                     }
                 });
                 generatedDeck.sort(() => Math.random() - 0.5);
 
-                const vitalDef = MASTER_CARDS.find(c => c.type === 'Vital');
-                if (vitalDef && customDeck['heart_soul']) {
+                // Dynamically scan for whichever Vital card key is active in customDeck dictionary configuration
+                const chosenVitalId = Object.keys(customDeck).find(id => MASTER_CARDS.find(c => c.id === id)?.type === 'Vital');
+                const vitalDef = MASTER_CARDS.find(c => c.id === chosenVitalId);
+                if (vitalDef) {
                     setVitalCardInst({ ...vitalDef, instanceId: 'vital_1', currentHp: vitalDef.hp });
                 }
 
@@ -530,7 +530,7 @@
                     setOppVitalLocked(true);
                     addLog("Offline Sandbox Mode initialized. Testing your deck layout.");
                 } else {
-                    addLog(`Game Engine v1 Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`);
+                    addLog(`GoldBurn Test V1 Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`);
                 }
             }, []);
 
@@ -985,7 +985,7 @@
                         {activeMenu && showMenuParams && activeMenu.id === showMenuParams.id && (
                             <div className="absolute inset-0 bg-stone-950/95 z-30 flex flex-col justify-center items-center gap-1.5 p-2 rounded-lg">
                                 {card.hp !== undefined && (
-                                    <div className="flex gap-1 w-full justify-center mb-1">
+                                    <div className="flex gap-2 w-full justify-center mb-1">
                                         <button onClick={(e)=>{e.stopPropagation(); modifyHealth(card.instanceId, 1)}} className="bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 text-[8px] flex-1 py-0.5 rounded transition">+1 HP</button>
                                         <button onClick={(e)=>{e.stopPropagation(); modifyHealth(card.instanceId, -1)}} className="bg-rose-900/80 hover:bg-rose-800 text-rose-100 text-[8px] flex-1 py-0.5 rounded transition">-1 HP</button>
                                     </div>
@@ -998,7 +998,6 @@
                                 </div>
                                 <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'grave', showMenuParams.r, showMenuParams.c)}} className="bg-stone-800 hover:bg-stone-700 transition text-stone-200 text-[10px] w-full py-1 rounded">To Graveyard</button>
                                 <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'void', showMenuParams.r, showMenuParams.c)}} className="bg-indigo-900 hover:bg-indigo-800 transition text-indigo-200 text-[10px] w-full py-1 rounded">To Void</button>
-                                <button onClick={(e)=>{e.stopPropagation(); setActiveMenu(null); setLockedInspectorId(null);}} className="text-[9px] text-stone-500 hover:text-stone-300 transition underline mt-1">Cancel</button>
                             </div>
                         )}
                     </div>
@@ -1208,7 +1207,8 @@
                                     <div className="flex-1 overflow-y-auto space-y-1.5 font-mono text-[10px] pr-1 mb-2">
                                         {chatLogs.map((c, i) => (
                                             <div key={i} className="leading-tight">
-                                                <span className={c.isMe ? "text-emerald-400 font-bold" : "text-rose-500 font-bold"}>{c.sender}: </span>
+                                                <span className={c.isMe ? "text-emerald-400 font-bold" : "text-rose-500 font-bold"}
+                                        >{c.sender}: </span>
                                                 <span className="text-white">{c.msg}</span>
                                             </div>
                                         ))}
@@ -1329,7 +1329,7 @@
                                                 )}
                                                 
                                                 {!card.image && (
-                                                    <div className="absolute inset-0 bg-stone-900 p-2 flex flex-col items-center justify-center text-center">
+                                                    <div className="absolute inset-0 p-2 flex flex-col items-center justify-center text-center">
                                                         <span className="text-[8px] font-bold text-stone-200">{card.name}</span>
                                                     </div>
                                                 )}
@@ -1565,7 +1565,7 @@
                 <GameProvider>
                     <div className="flex flex-col min-h-screen">
                         <header className="bg-stone-900 border-b border-stone-800 p-3 flex justify-between items-center px-6">
-                            <h1 className="text-sm font-black tracking-widest text-amber-500 uppercase">GoldBurn Test v1</h1>
+                            <h1 className="text-sm font-black tracking-widest text-amber-500 uppercase">GoldBurn V3</h1>
                             {(tab === 'lobby' || tab === 'forge') && (
                                 <nav className="flex gap-2">
                                     <button onClick={()=>setTab('lobby')} className={`text-xs px-4 py-1.5 rounded font-bold uppercase tracking-wider transition ${tab==='lobby'?'bg-stone-800 text-stone-200':'text-stone-500 hover:text-stone-300'}`}>Play</button>
