@@ -565,7 +565,6 @@ const STARTER_DECKS = {
     }
 };
 
-
         const MARKER_COLORS = [
             { bg: '#ef4444', name: 'Red' }, { bg: '#22c55e', name: 'Green' }, { bg: '#3b82f6', name: 'Blue' }, { bg: '#a855f7', name: 'Purple' }, { bg: '#eab308', name: 'Yellow' }
         ];
@@ -1174,44 +1173,42 @@ const STARTER_DECKS = {
             // Match Timer
             const [matchTime, setMatchTime] = useState(0);
 
-            // Reconnect Recovery - Load Session
+            // FIX: Single source of truth for initialization to prevent session saving race condition
+            const [hasInitialized, setHasInitialized] = useState(false);
+
             useEffect(() => {
-                if (isSoloTest) return;
-                const savedStr = sessionStorage.getItem(`gb_session_${roomCode}`);
-                if (savedStr) {
-                    try {
-                        const s = JSON.parse(savedStr);
-                        setMyGrid(s.myGrid || [ [null, null, null], [null, null, null] ]);
-                        setHand(s.hand || []);
-                        setDeck(s.deck || []);
-                        setGrave(s.grave || []);
-                        setVoidZone(s.voidZone || []);
-                        setGold(s.gold !== undefined ? s.gold : (isHost ? 3 : 0));
-                        setActSlot(s.actSlot || null);
-                        setSetupPhase(s.setupPhase !== undefined ? s.setupPhase : true);
-                        setMyVitalPos(s.myVitalPos || null);
-                        setMyVitalLocked(s.myVitalLocked || false);
-                        if (s.vitalCardInst) setVitalCardInst(s.vitalCardInst);
-                        addLog("Local state recovered from session storage.", false);
-                    } catch (e) {
-                        console.error("Failed to parse session storage", e);
+                if (hasInitialized) return;
+
+                if (!isSoloTest) {
+                    const savedStr = sessionStorage.getItem(`gb_session_${roomCode}`);
+                    if (savedStr) {
+                        try {
+                            const s = JSON.parse(savedStr);
+                            // Verify it's a valid session, not an empty array saved during a race condition
+                            if (s.vitalCardInst || (s.deck && s.deck.length > 0) || (s.hand && s.hand.length > 0)) {
+                                setMyGrid(s.myGrid || [ [null, null, null], [null, null, null] ]);
+                                setHand(s.hand || []);
+                                setDeck(s.deck || []);
+                                setGrave(s.grave || []);
+                                setVoidZone(s.voidZone || []);
+                                setGold(s.gold !== undefined ? s.gold : (isHost ? 3 : 0));
+                                setActSlot(s.actSlot || null);
+                                setSetupPhase(s.setupPhase !== undefined ? s.setupPhase : true);
+                                setMyVitalPos(s.myVitalPos || null);
+                                setMyVitalLocked(s.myVitalLocked || false);
+                                if (s.vitalCardInst) setVitalCardInst(s.vitalCardInst);
+                                
+                                setLogs(prev => [`[${new Date().toLocaleTimeString()}] Local state recovered from session storage.`, ...prev]);
+                                setHasInitialized(true);
+                                return;
+                            }
+                        } catch (e) {
+                            console.error("Failed to parse session", e);
+                        }
                     }
                 }
-            }, [roomCode, isSoloTest]);
 
-            // Reconnect Recovery - Save Session
-            useEffect(() => {
-                if (isSoloTest) return;
-                sessionStorage.setItem(`gb_session_${roomCode}`, JSON.stringify({
-                    myGrid, hand, deck, grave, voidZone, gold, actSlot, setupPhase, myVitalPos, myVitalLocked, vitalCardInst
-                }));
-            }, [myGrid, hand, deck, grave, voidZone, gold, actSlot, setupPhase, myVitalPos, myVitalLocked, vitalCardInst, roomCode, isSoloTest]);
-
-            // Initial Deck Generation (only if no session saved or isSoloTest)
-            useEffect(() => {
-                const savedStr = sessionStorage.getItem(`gb_session_${roomCode}`);
-                if (!isSoloTest && savedStr) return; // Skip if loaded from session
-
+                // If we reach here, we must build a fresh deck
                 let generatedDeck = [];
                 Object.entries(customDeck).forEach(([id, qty]) => {
                     const card = MASTER_CARDS.find(c => c.id === id);
@@ -1232,14 +1229,19 @@ const STARTER_DECKS = {
                 setDeck(generatedDeck);
                 setHand(startingHand);
                 
+                let initMsg = isSoloTest 
+                    ? "Offline Sandbox Mode initialized. Testing your deck layout." 
+                    : `GoldBurn Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`;
+                
+                setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${initMsg}`, ...prev]);
+
                 if (isSoloTest) {
                     setConnected(true);
                     setOppVitalLocked(true);
-                    addLog("Offline Sandbox Mode initialized. Testing your deck layout.");
-                } else {
-                    addLog(`GoldBurn Initialized. ${isHost ? 'You go first (3 Gold).' : 'You go second (0 Gold).'}`);
                 }
-            }, []);
+                
+                setHasInitialized(true);
+            }, [hasInitialized, isSoloTest, roomCode, customDeck, isHost]);
 
             useEffect(() => {
                 if (isSoloTest) return;
@@ -1273,7 +1275,7 @@ const STARTER_DECKS = {
 
             const formatTime = (secs) => `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
 
-            // MULTIPLAYER HANDSHAKE FIX (Sends entire board state on connect/reconnect)
+            // Handshake synchronization on connect/reconnect
             useEffect(() => {
                 if (conn && connected && !isSoloTest) {
                     conn.send({ type: 'SYNC_GRID', grid: myGrid });
@@ -1293,6 +1295,14 @@ const STARTER_DECKS = {
                     conn.send({ type: 'SYNC_COUNTS', hand: hand.length, deck: deck.length, grave: grave, voidZone: voidZone });
                 }
             }, [hand, deck, grave, voidZone, connected, setupPhase, isSoloTest, conn]);
+
+            // Reconnect Recovery - Save Session (Only runs if hasInitialized is true)
+            useEffect(() => {
+                if (isSoloTest || !hasInitialized) return;
+                sessionStorage.setItem(`gb_session_${roomCode}`, JSON.stringify({
+                    myGrid, hand, deck, grave, voidZone, gold, actSlot, setupPhase, myVitalPos, myVitalLocked, vitalCardInst
+                }));
+            }, [myGrid, hand, deck, grave, voidZone, gold, actSlot, setupPhase, myVitalPos, myVitalLocked, vitalCardInst, roomCode, isSoloTest, hasInitialized]);
 
             const showPopup = (msg) => {
                 setPopupMsg(msg);
@@ -2493,7 +2503,7 @@ const STARTER_DECKS = {
                 <GameProvider>
                     <div className="flex flex-col min-h-screen">
                         <header className="bg-stone-900 border-b border-stone-800 p-3 flex justify-between items-center px-6">
-                            <h1 className="text-sm font-black tracking-widest text-amber-500 uppercase">GoldBurn <span className="text-stone-500 text-[9px] ml-1">V3</span></h1>
+                            <h1 className="text-sm font-black tracking-widest text-amber-500 uppercase">GoldBurn <span className="text-stone-500 text-[9px] ml-1">TEST</span></h1>
                             {(tab === 'lobby' || tab === 'forge') && (
                                 <nav className="flex gap-2">
                                     <button onClick={()=>setTab('lobby')} className={`text-xs px-4 py-1.5 rounded font-bold uppercase tracking-wider transition ${tab==='lobby'?'bg-stone-800 text-stone-200':'text-stone-500 hover:text-stone-300'}`}>Play</button>
