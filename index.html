@@ -1324,7 +1324,9 @@ const STARTER_DECKS = {
                         // We must swap 'my' and 'opp' tags when receiving a ping so it renders correctly locally
                         const localSource = data.source.includes('-my-') ? data.source.replace('-my-', '-opp-') : data.source.replace('-opp-', '-my-');
                         const localTarget = data.target.includes('-my-') ? data.target.replace('-my-', '-opp-') : data.target.replace('-opp-', '-my-');
-                        receivePing(localSource, localTarget, data.color);
+                        
+                        // Ignore the color sent by the opponent, force it to render Red locally
+                        receivePing(localSource, localTarget, '#ef4444');
                     }
                     
                     if (data.type === 'SYNC_GOLD') setOppGold(data.gold);
@@ -1396,7 +1398,7 @@ const STARTER_DECKS = {
 
             const sendPing = (source, target) => {
                 if (source === target) return;
-                const color = isHost ? '#3b82f6' : '#ef4444'; // Host blue, client red
+                const color = '#22c55e'; // Your arrow is always Green
                 receivePing(source, target, color);
                 if (conn && !isSoloTest) conn.send({ type: 'PING', source, target, color });
             };
