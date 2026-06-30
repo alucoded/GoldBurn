@@ -565,6 +565,7 @@ const STARTER_DECKS = {
     }
 };
 
+
         const MARKER_COLORS = [
             { bg: '#ef4444', name: 'Red' }, { bg: '#22c55e', name: 'Green' }, { bg: '#3b82f6', name: 'Blue' }, { bg: '#a855f7', name: 'Purple' }, { bg: '#eab308', name: 'Yellow' }
         ];
@@ -1153,6 +1154,7 @@ const STARTER_DECKS = {
             const [modalSelectedIdx, setModalSelectedIdx] = useState(null);
             
             const [movingCard, setMovingCard] = useState(null);
+            const [targetingSource, setTargetingSource] = useState(null);
             
             const [popupMsg, setPopupMsg] = useState(null);
             const popupTimer = useRef(null);
@@ -1165,8 +1167,6 @@ const STARTER_DECKS = {
             const [placingToken, setPlacingToken] = useState(false);
 
             // Ping System State
-            const [pingMode, setPingMode] = useState(false);
-            const [pingSource, setPingSource] = useState(null);
             const [activePings, setActivePings] = useState([]);
             const pingTimers = useRef({});
 
@@ -1320,7 +1320,12 @@ const STARTER_DECKS = {
                     if (data.type === 'LOG') setLogs(prev => [data.msg, ...prev]);
                     if (data.type === 'CHAT') setChatLogs(prev => [...prev, { sender: data.sender, msg: data.msg, isMe: false }]);
                     if (data.type === 'POPUP') showPopup(data.msg);
-                    if (data.type === 'PING') receivePing(data.source, data.target, data.color);
+                    if (data.type === 'PING') {
+                        // We must swap 'my' and 'opp' tags when receiving a ping so it renders correctly locally
+                        const localSource = data.source.includes('-my-') ? data.source.replace('-my-', '-opp-') : data.source.replace('-opp-', '-my-');
+                        const localTarget = data.target.includes('-my-') ? data.target.replace('-my-', '-opp-') : data.target.replace('-opp-', '-my-');
+                        receivePing(localSource, localTarget, data.color);
+                    }
                     
                     if (data.type === 'SYNC_GOLD') setOppGold(data.gold);
                     if (data.type === 'SYNC_GRID') setOppGrid(data.grid);
@@ -1715,9 +1720,9 @@ const STARTER_DECKS = {
             const clearInteractions = () => {
                 setActiveMenu(null);
                 setMovingCard(null);
+                setTargetingSource(null);
                 setLockedInspectorId(null);
                 setSelectedHandIdx(null);
-                setPingMode(false);
                 if (placingToken) setPlacingToken(false);
             };
 
@@ -1753,21 +1758,15 @@ const STARTER_DECKS = {
                         )}
 
                         {activeMenu && showMenuParams && activeMenu.id === showMenuParams.id && (
-                            <div className="absolute inset-0 bg-stone-950/95 z-30 flex flex-col justify-center items-center gap-1.5 p-2 rounded-lg">
-                                {card.hp !== undefined && (
-                                    <div className="flex gap-2 w-full justify-center mb-1">
-                                        <button onClick={(e)=>{e.stopPropagation(); modifyHealth(card.instanceId, 1)}} className="bg-emerald-900/80 hover:bg-emerald-800 text-emerald-100 text-[8px] flex-1 py-0.5 rounded transition">+1 HP</button>
-                                        <button onClick={(e)=>{e.stopPropagation(); modifyHealth(card.instanceId, -1)}} className="bg-rose-900/80 hover:bg-rose-800 text-rose-100 text-[8px] flex-1 py-0.5 rounded transition">-1 HP</button>
-                                    </div>
-                                )}
-                                <div className="flex gap-1 w-full">
-                                    <button onClick={(e)=>{e.stopPropagation(); toggleActionUsed(card.instanceId)}} className="bg-stone-700 hover:bg-stone-600 transition text-stone-200 text-[9px] w-full py-1 rounded">Action</button>
-                                    {showMenuParams.type === 'grid' && (
-                                        <button onClick={(e)=>{e.stopPropagation(); setMovingCard(showMenuParams); setActiveMenu(null);}} className="bg-amber-800 hover:bg-amber-700 transition text-amber-100 text-[9px] w-full py-1 rounded">Move</button>
-                                    )}
+                            <div className="absolute inset-0 bg-stone-950/95 z-30 flex flex-col justify-center items-center gap-2 p-3 rounded-lg shadow-inner">
+                                <div className="flex gap-1.5 w-full">
+                                    <button onClick={(e)=>{e.stopPropagation(); setTargetingSource({ cellId: showMenuParams.id, instanceId: card.instanceId }); setActiveMenu(null); setLockedInspectorId(null);}} className="bg-rose-700/80 hover:bg-rose-600 transition text-rose-100 text-[10px] uppercase font-bold w-full py-1.5 rounded shadow">Target</button>
+                                    <button onClick={(e)=>{e.stopPropagation(); toggleActionUsed(card.instanceId)}} className="bg-stone-700/80 hover:bg-stone-600 transition text-stone-200 text-sm w-full py-1.5 rounded flex items-center justify-center shadow" title="Toggle Sleep">💤</button>
                                 </div>
-                                <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'grave', showMenuParams.r, showMenuParams.c)}} className="bg-stone-800 hover:bg-stone-700 transition text-stone-200 text-[10px] w-full py-1 rounded">To Graveyard</button>
-                                <button onClick={(e)=>{e.stopPropagation(); setActiveMenu(null); setLockedInspectorId(null);}} className="text-[9px] text-stone-500 hover:text-stone-300 transition underline mt-1">Cancel</button>
+                                {showMenuParams.type === 'grid' && (
+                                    <button onClick={(e)=>{e.stopPropagation(); setMovingCard(showMenuParams); setActiveMenu(null);}} className="bg-amber-800/80 hover:bg-amber-700 transition text-amber-100 text-[10px] uppercase font-bold w-full py-1.5 rounded shadow">Move</button>
+                                )}
+                                <button onClick={(e)=>{e.stopPropagation(); sendFieldCardAway(showMenuParams.type, 'grave', showMenuParams.r, showMenuParams.c)}} className="bg-stone-800/80 hover:bg-stone-700 transition text-stone-300 hover:text-white text-[9px] uppercase font-bold w-full py-1.5 rounded shadow mt-1">To Graveyard</button>
                             </div>
                         )}
                     </div>
@@ -1777,60 +1776,53 @@ const STARTER_DECKS = {
             const renderCard = (card, onClick, showMenuParams, cellId) => {
                 const isMoveTarget = movingCard && showMenuParams?.type === 'grid';
                 const isPlacingTarget = placingToken && showMenuParams?.type === 'grid';
-                
-                // Ping interaction handlers
-                const handlePointerDown = (e) => {
-                    if (e.shiftKey && cellId) { e.preventDefault(); e.stopPropagation(); setPingSource(cellId); }
-                };
-                const handlePointerUp = (e) => {
-                    if (pingSource && pingSource !== cellId) {
-                        e.stopPropagation(); sendPing(pingSource, cellId); setPingSource(null);
-                    }
-                };
+                const isTargetingMode = targetingSource !== null;
                 
                 if (!card) return (
                     <div 
                         id={cellId}
-                        onMouseDown={handlePointerDown}
-                        onMouseUp={handlePointerUp}
                         onClick={(e) => { 
                             e.stopPropagation();
-                            if (pingMode && cellId) {
-                                if (!pingSource) { setPingSource(cellId); return; }
-                                else { sendPing(pingSource, cellId); setPingSource(null); setPingMode(false); return; }
+                            if (isTargetingMode && cellId) {
+                                if (targetingSource.cellId !== cellId) {
+                                    sendPing(targetingSource.cellId, cellId);
+                                    updateMyCard(targetingSource.instanceId, c => ({ ...c, actionUsed: true }));
+                                }
+                                setTargetingSource(null);
+                                return;
                             }
-                            if (isMoveTarget) {
-                                executeMove(showMenuParams.r, showMenuParams.c);
-                            } else if (isPlacingTarget) {
-                                placeToGrid(showMenuParams.r, showMenuParams.c);
-                            } else {
-                                setLockedInspectorId(null);
-                                if(!showMenuParams || showMenuParams.type==='grid') setInspectedCard(null); 
-                                if(onClick) onClick(e); 
-                            }
+                            if (isMoveTarget) { executeMove(showMenuParams.r, showMenuParams.c); return; }
+                            if (isPlacingTarget) { placeToGrid(showMenuParams.r, showMenuParams.c); return; }
+                            
+                            setLockedInspectorId(null);
+                            if(!showMenuParams || showMenuParams.type==='grid') setInspectedCard(null); 
+                            if(onClick) onClick(e); 
                         }} 
                         onMouseEnter={() => { if(!isMoveTarget && !isPlacingTarget && !lockedInspectorId) setInspectedCard(null); }}
                         className={`w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center transition-all hover:scale-105 ${
                             isMoveTarget ? 'border-emerald-500 bg-emerald-900/30 cursor-pointer animate-pulse' : 
                             isPlacingTarget ? 'border-indigo-500 bg-indigo-900/30 cursor-pointer animate-pulse' :
+                            isTargetingMode ? 'border-rose-500/50 bg-rose-900/20 cursor-crosshair' :
                             'border-stone-800 bg-stone-900/40 hover:bg-stone-800 cursor-pointer'
                         }`}
                     >
                         <span className="text-[10px] font-mono text-stone-600 uppercase text-center px-2">
-                            {isMoveTarget ? 'Move Here' : isPlacingTarget ? 'Spawn Here' : 'Empty Space'}
+                            {isTargetingMode ? 'Target Space' : isMoveTarget ? 'Move Here' : isPlacingTarget ? 'Spawn Here' : 'Empty Space'}
                         </span>
                     </div>
                 );
                 return (
                     <div 
                         id={cellId}
-                        onMouseDown={handlePointerDown}
-                        onMouseUp={handlePointerUp}
                         onClick={(e) => { 
                             e.stopPropagation();
-                            if (pingMode && cellId) {
-                                if (!pingSource) { setPingSource(cellId); return; }
-                                else { sendPing(pingSource, cellId); setPingSource(null); setPingMode(false); return; }
+                            if (isTargetingMode && cellId) {
+                                if (targetingSource.cellId !== cellId) {
+                                    sendPing(targetingSource.cellId, cellId);
+                                    updateMyCard(targetingSource.instanceId, c => ({ ...c, actionUsed: true }));
+                                }
+                                setTargetingSource(null);
+                                return;
                             }
                             if (lockedInspectorId === card.instanceId && (!showMenuParams || activeMenu?.id === showMenuParams.id)) {
                                 setLockedInspectorId(null);
@@ -1838,13 +1830,13 @@ const STARTER_DECKS = {
                             } else {
                                 setInspectedCard(card);
                                 setLockedInspectorId(card.instanceId);
-                                if (onClick) onClick(e);
-                                if (showMenuParams) setActiveMenu(showMenuParams);
-                                if (typeof window !== 'undefined' && window.innerWidth >= 1024) setIsInspectorOpen(true);
+                                if (onClick && !isTargetingMode) onClick(e);
+                                if (showMenuParams && !isTargetingMode) setActiveMenu(showMenuParams);
+                                if (typeof window !== 'undefined' && window.innerWidth >= 1024 && !isTargetingMode) setIsInspectorOpen(true);
                             }
                         }} 
                         onMouseEnter={() => { if(card && !lockedInspectorId) setInspectedCard(card); }}
-                        className="w-full h-full cursor-pointer transition-all hover:scale-105 relative"
+                        className={`w-full h-full cursor-pointer transition-all hover:scale-105 relative ${isTargetingMode ? 'ring-2 ring-rose-500/50 hover:ring-rose-500 rounded-lg cursor-crosshair' : ''}`}
                     >
                         {renderCardLayout(card, showMenuParams)}
                     </div>
@@ -2124,16 +2116,15 @@ const STARTER_DECKS = {
 
                             <div className={`w-full max-w-3xl mx-auto flex items-center border-y border-stone-800/60 py-3 my-4 bg-stone-950/30 rounded-xl px-2 md:px-4 min-w-0 md:min-w-[500px] flex-wrap md:flex-nowrap justify-center md:justify-between gap-4 md:gap-0 ${isSoloTest ? 'mt-auto' : ''}`}>
                                 {!isSoloTest ? (
-                                    <div id="cell-opp-act" onClick={(e) => { 
-                                            e.stopPropagation(); 
+                                    <div className="w-[15vw] sm:w-[80px] h-[21vw] sm:h-[112px] flex-shrink-0 relative opacity-70">
+                                        <span className="absolute -top-3 text-[8px] text-rose-500 uppercase font-mono hidden sm:block">Enemy Act</span>
+                                        {renderCard(oppActSlot, () => { 
                                             if(oppActSlot) { 
                                                 setInspectedCard(oppActSlot); 
                                                 setLockedInspectorId(oppActSlot.instanceId); 
                                                 if (typeof window !== 'undefined' && window.innerWidth >= 1024) setIsInspectorOpen(true); 
                                             } 
-                                        }} className="w-[15vw] sm:w-[80px] h-[21vw] sm:h-[112px] border-2 border-stone-800 border-dashed rounded-lg bg-stone-900/40 flex-shrink-0 flex items-center justify-center relative opacity-70 cursor-pointer">
-                                        <span className="absolute -top-3 text-[8px] text-rose-500 uppercase font-mono hidden sm:block">Enemy Act</span>
-                                        {oppActSlot ? renderCardLayout(oppActSlot) : <span className="text-[8px] text-stone-700 font-mono uppercase">Empty</span>}
+                                        }, null, 'cell-opp-act')}
                                     </div>
                                 ) : (
                                     <div className="w-[15vw] sm:w-[80px] h-[21vw] sm:h-[112px] opacity-0 pointer-events-none"></div>
@@ -2142,14 +2133,14 @@ const STARTER_DECKS = {
                                 <div className="flex flex-col items-center">
                                     <span className="text-[10px] font-mono text-amber-500 uppercase tracking-widest mb-1 text-center">Zone in Play</span>
                                     <div className="w-[15vw] sm:w-[80px] h-[21vw] sm:h-[112px] flex-shrink-0 relative">
-                                        {renderCard(sharedZone, placeToZone, { type: 'zone', id: 'shared-zone' }, 'cell-shared-zone')}
+                                        {renderCard(sharedZone, placeToZone, { type: 'zone', id: 'cell-shared-zone' }, 'cell-shared-zone')}
                                     </div>
                                     <span className="text-[8px] text-stone-600 mt-1 italic hidden sm:block">Affects both fields</span>
                                 </div>
 
                                 <div className="w-[15vw] sm:w-[80px] h-[21vw] sm:h-[112px] flex-shrink-0 relative">
                                     <span className="absolute -top-3 text-[8px] text-amber-500 uppercase font-mono hidden sm:block">Your Act Slot</span>
-                                    {renderCard(actSlot, placeToAct, { type: 'act', id: 'my-act' }, 'cell-my-act')}
+                                    {renderCard(actSlot, placeToAct, { type: 'act', id: 'cell-my-act' }, 'cell-my-act')}
                                 </div>
                             </div>
 
@@ -2160,7 +2151,7 @@ const STARTER_DECKS = {
                                         <div key={`my-row-${r}`} className="flex justify-center gap-2">
                                             {[0,1,2].map(c => (
                                                 <div key={`my-${r}-${c}`} className="w-[15vw] sm:w-[80px] h-[21vw] sm:h-[112px]">
-                                                    {renderCard(myGrid[r][c], () => placeToGrid(r, c), { type: 'grid', r, c, id: `my-${r}-${c}` }, `cell-my-${r}-${c}`)}
+                                                    {renderCard(myGrid[r][c], () => placeToGrid(r, c), { type: 'grid', r, c, id: `cell-my-${r}-${c}` }, `cell-my-${r}-${c}`)}
                                                 </div>
                                             ))}
                                         </div>
@@ -2256,8 +2247,8 @@ const STARTER_DECKS = {
                         <div className={`w-full h-full flex flex-col gap-5 overflow-y-auto overflow-x-hidden ${isInspectorOpen ? 'p-4' : 'py-4 hidden lg:flex'} transition-opacity duration-300 ${isInspectorOpen ? 'opacity-100 delay-150' : 'opacity-0'}`}>
                             
                             {/* Card Inspector Tool */}
-                            <div className="flex flex-col items-center mt-6 lg:mt-0">
-                                <span className="text-xs font-bold text-stone-500 uppercase tracking-widest border-b border-stone-800 w-full text-center pb-2 mb-4 shrink-0 flex items-center justify-center gap-2">
+                            <div className="flex flex-col items-center mt-6 lg:mt-0 shrink-0">
+                                <span className="text-xs font-bold text-stone-500 uppercase tracking-widest border-b border-stone-800 w-full text-center pb-2 mb-4 flex items-center justify-center gap-2">
                                     Card Inspector
                                     {lockedInspectorId && <span className="text-amber-500 text-[10px]" title="Locked (Click background to clear)">🔒</span>}
                                     {inspectedCard && (
@@ -2266,30 +2257,48 @@ const STARTER_DECKS = {
                                 </span>
                                 
                                 {inspectedCard ? (
-                                    <div onClick={()=>setZoomedCard(inspectedCard)} className="w-[50vw] sm:w-[280px] h-[70vw] sm:h-[392px] relative rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-600 shrink-0 bg-stone-850 cursor-pointer group">
-                                        {inspectedCard.image ? (
-                                            <img src={inspectedCard.image} alt={inspectedCard.name} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
-                                        ) : (
-                                            <div className="absolute inset-0 bg-stone-800 flex flex-col p-6 text-center items-center justify-center">
-                                                <span className="text-xl sm:text-2xl font-bold text-stone-200 mb-2">{inspectedCard.name}</span>
-                                                <span className="text-sm sm:text-base font-mono text-amber-500 mb-6">{inspectedCard.cost}G</span>
-                                                <p className="text-xs sm:text-sm text-stone-400 italic">{inspectedCard.description}</p>
-                                                <span className="text-[10px] sm:text-xs text-stone-500 mt-auto uppercase">{inspectedCard.type}</span>
-                                            </div>
-                                        )}
-                                        
-                                        {/* Status Markers Displayed in Inspector Overlay */}
-                                        {inspectedCard.markers && (
-                                            <div className="absolute top-2 right-2 flex flex-col gap-1.5 z-20 pointer-events-none">
-                                                {Object.entries(inspectedCard.markers).filter(([k,v])=>v>0).map(([color, count]) => (
-                                                    <div key={color} className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 border-stone-950 shadow-md" style={{backgroundColor: color, color: color==='#eab308'?'black':'white'}}>{count}</div>
-                                                ))}
-                                            </div>
-                                        )}
+                                    <div className="flex flex-col gap-3 w-full items-center">
+                                        <div onClick={()=>setZoomedCard(inspectedCard)} className="w-[50vw] sm:w-[280px] h-[70vw] sm:h-[392px] relative rounded-2xl overflow-hidden shadow-2xl border-2 border-amber-600 shrink-0 bg-stone-850 cursor-pointer group">
+                                            {inspectedCard.image ? (
+                                                <img src={inspectedCard.image} alt={inspectedCard.name} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" />
+                                            ) : (
+                                                <div className="absolute inset-0 bg-stone-800 flex flex-col p-6 text-center items-center justify-center">
+                                                    <span className="text-xl sm:text-2xl font-bold text-stone-200 mb-2">{inspectedCard.name}</span>
+                                                    <span className="text-sm sm:text-base font-mono text-amber-500 mb-6">{inspectedCard.cost}G</span>
+                                                    <p className="text-xs sm:text-sm text-stone-400 italic">{inspectedCard.description}</p>
+                                                    <span className="text-[10px] sm:text-xs text-stone-500 mt-auto uppercase">{inspectedCard.type}</span>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Status Markers Displayed in Inspector Overlay */}
+                                            {inspectedCard.markers && (
+                                                <div className="absolute top-2 right-2 flex flex-col gap-1.5 z-20 pointer-events-none">
+                                                    {Object.entries(inspectedCard.markers).filter(([k,v])=>v>0).map(([color, count]) => (
+                                                        <div key={color} className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 border-stone-950 shadow-md" style={{backgroundColor: color, color: color==='#eab308'?'black':'white'}}>{count}</div>
+                                                    ))}
+                                                </div>
+                                            )}
 
-                                        <div className="absolute bottom-2 right-2 bg-black/60 p-1 rounded opacity-0 group-hover:opacity-100 transition">
-                                            <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                            <div className="absolute bottom-2 right-2 bg-black/60 p-1 rounded opacity-0 group-hover:opacity-100 transition">
+                                                <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                            </div>
                                         </div>
+
+                                        {/* NEW: Explicit Health Block in Inspector */}
+                                        {inspectedCard.hp !== undefined && (
+                                            <div className="flex items-center justify-between bg-stone-900 border border-stone-800 w-full max-w-[280px] p-2 rounded-xl shadow-md">
+                                                <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest pl-2">Health</span>
+                                                <div className="flex items-center gap-3">
+                                                    {isMyCard && (
+                                                        <button onClick={() => modifyHealth(inspectedCard.instanceId, -1)} className="w-7 h-7 bg-rose-900/40 hover:bg-rose-900/80 border border-rose-700/50 text-rose-400 rounded-lg font-black transition flex items-center justify-center">-</button>
+                                                    )}
+                                                    <span className="text-xl font-black text-amber-500 w-8 text-center">{inspectedCard.currentHp}</span>
+                                                    {isMyCard && (
+                                                        <button onClick={() => modifyHealth(inspectedCard.instanceId, 1)} className="w-7 h-7 bg-emerald-900/40 hover:bg-emerald-900/80 border border-emerald-700/50 text-emerald-400 rounded-lg font-black transition flex items-center justify-center">+</button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="w-[50vw] sm:w-[280px] h-[70vw] sm:h-[392px] border-2 border-dashed border-stone-700 rounded-2xl flex flex-col items-center justify-center p-4 bg-stone-900/50 shrink-0">
@@ -2298,6 +2307,15 @@ const STARTER_DECKS = {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Targeting Mode Warning */}
+                            {targetingSource && (
+                                <div className="bg-rose-900/40 border border-rose-500/50 rounded-xl p-3 flex flex-col items-center text-center gap-2 shadow-lg shadow-rose-900/20 animate-pulse shrink-0">
+                                    <span className="text-xs text-rose-400 font-bold uppercase tracking-widest">Targeting Mode Active</span>
+                                    <span className="text-[10px] text-stone-300">Click any card or space to fire the action arrow.</span>
+                                    <button onClick={() => setTargetingSource(null)} className="bg-stone-900 hover:bg-stone-800 text-stone-300 border border-stone-700 rounded px-4 py-1.5 text-[10px] uppercase font-bold transition">Cancel Target</button>
+                                </div>
+                            )}
 
                             {/* Move Mode Warning */}
                             {movingCard && (
@@ -2365,15 +2383,6 @@ const STARTER_DECKS = {
                                     </select>
                                     <button onClick={executeRoll} className="bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold px-4 py-2 rounded text-xs transition border border-stone-700 shadow">Roll</button>
                                 </div>
-                            </div>
-
-                            {/* Mobile Ping Tool */}
-                            <div className="bg-stone-950 border border-stone-800 rounded-xl p-4 flex flex-col items-center shrink-0 lg:hidden">
-                                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block mb-2">Targeting System</span>
-                                <button onClick={() => { setPingMode(!pingMode); setPingSource(null); }} className={`w-full border rounded py-2 text-xs font-bold uppercase transition ${pingMode ? 'bg-amber-900/60 text-amber-100 border-amber-500 animate-pulse' : 'bg-stone-900 text-stone-400 border-stone-700 hover:bg-stone-800'}`}>
-                                    {pingMode ? 'Select Targets' : 'Ping Mode (Arrow)'}
-                                </button>
-                                <span className="text-[8px] text-stone-600 mt-1 italic text-center">Desktop: Shift + Drag between cards</span>
                             </div>
 
                             <div className="bg-stone-950 border border-stone-800 rounded-xl p-4 flex flex-col items-center shrink-0 mt-auto">
