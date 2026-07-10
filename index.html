@@ -1442,6 +1442,7 @@ const STARTER_DECKS = {
             const searchDeckDraw = (realIdx) => {
                 const d = [...deck];
                 const card = d.splice(realIdx, 1)[0];
+                d.sort(() => Math.random() - 0.5);
                 setDeck(d);
                 setHand([...hand, card]);
                 setViewModal({ isOpen: false });
