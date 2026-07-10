@@ -2390,7 +2390,7 @@ const STARTER_DECKS = {
                                 </div>
                                 
                                 <div className="flex-1 overflow-y-auto pr-2 flex flex-wrap gap-4 content-start justify-center">
-                                    {(viewModal.onSelect ? [...viewModal.cards].sort(() => Math.random() - 0.5) : viewModal.cards).map((card, i) => {
+                                    {(viewModal.onSelect ? [...viewModal.cards].sort((a, b) => a.name.localeCompare(b.name)) : viewModal.cards).map((card, i) => {
                                         const realIdx = viewModal.onSelect ? viewModal.cards.findIndex(c => c.instanceId === card.instanceId) : null;
                                         
                                         return (
