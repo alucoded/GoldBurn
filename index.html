@@ -545,6 +545,7 @@ const STARTER_DECKS = {
     }
 };
 
+
         const PLAYER_COLORS = [
             { bg: '#ef4444', name: 'Crimson' }, 
             { bg: '#3b82f6', name: 'Azure' }, 
@@ -1121,7 +1122,7 @@ const STARTER_DECKS = {
         // ============================================================================
         // v2 MULTIPLAYER BOARD (STAR TOPOLOGY)
         // ============================================================================
-        const SandboxBoard = ({ roomCode, username, isHost, isSpectator, hostDefinedMax, customDeck, onLeaveLobby, isSoloTest = false }) => {
+        const SandboxBoard = ({ roomCode, username, isHost, isSpectator: initialIsSpectator, hostDefinedMax, customDeck, onLeaveLobby, isSoloTest = false }) => {
             const [myPeerId, setMyPeerId] = useState(null);
             const [peer, setPeer] = useState(null);
             const [hostConn, setHostConn] = useState(null);
@@ -1150,6 +1151,7 @@ const STARTER_DECKS = {
             useEffect(() => { hostConnectionsRef.current = hostConnections; }, [hostConnections]);
 
             // Local State (Syncs to Host)
+            const [localIsSpectator, setLocalIsSpectator] = useState(initialIsSpectator);
             const [myLocalState, setMyLocalState] = useState({
                 username: username,
                 color: PLAYER_COLORS[0].bg,
@@ -1195,6 +1197,8 @@ const STARTER_DECKS = {
             const [activePings, setActivePings] = useState([]);
             const pingTimers = useRef({});
             const [matchTime, setMatchTime] = useState(0);
+
+            const hasShownDeathAlert = useRef(false);
 
             // ---------------------------------------------------------
             // INITIALIZATION
@@ -1317,14 +1321,19 @@ const STARTER_DECKS = {
                         conn.on('open', () => {
                             setHostConn(conn);
                             setConnected(true);
-                            conn.send({ type: 'HELLO', isSpectator, username });
+                            conn.send({ type: 'HELLO', isSpectator: localIsSpectator, username });
                         });
 
                         conn.on('data', data => {
                             if (data.type === 'WELCOME') {
                                 setMaxPlayers(data.maxPlayers);
-                                if (data.role === 'SPECTATOR') addLogSystem("You are spectating this match.");
-                                else addLogSystem("Joined the match successfully.");
+                                if (data.role === 'SPECTATOR') {
+                                    setLocalIsSpectator(true);
+                                    addLogSystem("Match is ongoing or full. You are spectating this match.");
+                                    setAlertDialog({ msg: "Match is already ongoing or full. You have joined as a spectator." });
+                                } else {
+                                    addLogSystem("Joined the match successfully.");
+                                }
                             }
                             if (data.type === 'MATCH_STATE') {
                                 setAllPlayers(data.players);
@@ -1376,29 +1385,29 @@ const STARTER_DECKS = {
 
             // Sync Local -> Host -> All
             useEffect(() => {
-                if (isSoloTest || isSpectator || !connected || !myPeerId) return;
+                if (localIsSpectator || !connected || !myPeerId) return;
                 
                 if (isHost) {
                     setAllPlayers(prevP => {
                         const nextP = { ...prevP, [myPeerId]: { ...prevP[myPeerId], ...myLocalState } };
-                        let nextPhase = matchPhase; // Read captured phase
+                        let nextPhase = matchStateRef.current.phase; // Read captured phase
                         if (nextPhase === 'SETUP') {
                             const playersArr = Object.values(nextP);
                             if (playersArr.length === maxPlayers && playersArr.every(p => p.isReady)) {
                                 nextPhase = 'PLAY';
                                 setMatchPhase('PLAY');
-                                broadcastLog({ time: new Date().toLocaleTimeString(), msg: `All players locked in. Combat begins!`, color: '#eab308', senderName: 'SYSTEM' }, hostConnections);
+                                if (!isSoloTest) broadcastLog({ time: new Date().toLocaleTimeString(), msg: `All players locked in. Combat begins!`, color: '#eab308', senderName: 'SYSTEM' }, hostConnectionsRef.current);
                             }
                         }
                         
                         // Reference current spectators and zone to prevent dependency looping
-                        broadcastStateToAll(hostConnectionsRef.current, nextP, matchStateRef.current.spectators, matchStateRef.current.zone, nextPhase, matchStateRef.current.maxPlayers);
+                        if (!isSoloTest) broadcastStateToAll(hostConnectionsRef.current, nextP, matchStateRef.current.spectators, matchStateRef.current.zone, nextPhase, matchStateRef.current.maxPlayers);
                         return nextP;
                     });
-                } else if (hostConn) {
+                } else if (hostConn && !isSoloTest) {
                     hostConn.send({ type: 'SYNC_LOCAL', state: myLocalState });
                 }
-            }, [myLocalState, isHost, connected, myPeerId, hostConn, isSpectator, isSoloTest]);
+            }, [myLocalState, isHost, connected, myPeerId, hostConn, localIsSpectator, isSoloTest]);
 
             // Sync Host Zone Updates
             useEffect(() => {
@@ -1417,6 +1426,35 @@ const STARTER_DECKS = {
             }, [matchPhase, connected, isSoloTest]);
 
             const formatTime = (secs) => `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+
+            // Game Over & Spectator Transition Check
+            useEffect(() => {
+                if (matchPhase === 'PLAY') {
+                    const playersList = Object.entries(allPlayers);
+                    const activePlayers = playersList.filter(([id, p]) => !p.isDead);
+
+                    if (playersList.length >= 2 && activePlayers.length === 1) {
+                        const winnerId = activePlayers[0][0];
+                        const winnerName = activePlayers[0][1].username;
+
+                        if (myPeerId === winnerId) {
+                            setAlertDialog({ msg: "You win, your opponent's vital was destroyed!", onClose: onLeaveLobby });
+                        } else if (myLocalState.isDead) {
+                            if (!hasShownDeathAlert.current) {
+                                setAlertDialog({ msg: "You lost, your vital was destroyed!", onClose: onLeaveLobby });
+                                hasShownDeathAlert.current = true;
+                            } else {
+                                setAlertDialog({ msg: `${winnerName} won the match!`, onClose: onLeaveLobby });
+                            }
+                        } else if (localIsSpectator) {
+                            setAlertDialog({ msg: `${winnerName} won the match!`, onClose: onLeaveLobby });
+                        }
+                    } else if (myLocalState.isDead && !hasShownDeathAlert.current && activePlayers.length > 1) {
+                        setAlertDialog({ msg: "You lost, your vital was destroyed. You are now a spectator." });
+                        hasShownDeathAlert.current = true;
+                    }
+                }
+            }, [allPlayers, matchPhase, myPeerId, myLocalState.isDead, localIsSpectator, onLeaveLobby]);
 
             // ---------------------------------------------------------
             // ACTIONS
@@ -1658,16 +1696,41 @@ const STARTER_DECKS = {
             };
 
             const modifyHealth = (instanceId, amt) => {
-                let died = false;
-                updateMyCard(instanceId, card => {
-                    const newHp = card.currentHp + amt;
-                    if (card.type === 'Vital' && newHp <= 0 && !myLocalState.isDead) died = true;
-                    return { ...card, currentHp: newHp };
-                });
-                
-                if (died) {
+                let cardToUpdate = null;
+                for (let r = 0; r < myLocalState.grid.length; r++) {
+                    for (let c = 0; c < myLocalState.grid[r].length; c++) {
+                        if (myLocalState.grid[r][c]?.instanceId === instanceId) {
+                            cardToUpdate = myLocalState.grid[r][c];
+                        }
+                    }
+                }
+                if (!cardToUpdate && myLocalState.actSlot?.instanceId === instanceId) {
+                    cardToUpdate = myLocalState.actSlot;
+                }
+
+                let isDyingVital = false;
+                if (cardToUpdate && cardToUpdate.type === 'Vital' && (cardToUpdate.currentHp + amt) <= 0) {
+                    isDyingVital = true;
+                }
+
+                if (isDyingVital && !myLocalState.isDead) {
                     dispatchLog(`'s Vital has fallen. They have been eliminated!`);
-                    setMyLocalState(prev => ({ ...prev, isDead: true }));
+                    
+                    setMyLocalState(prev => ({ 
+                        ...prev, 
+                        isDead: true,
+                        actSlot: null, 
+                        grid: [ [null, null, null], [null, null, null] ]
+                    }));
+                    
+                    if (sharedZone?.ownerId === myPeerId) {
+                        setSharedZone(null);
+                        if (!isHost && hostConn) hostConn.send({ type: 'SYNC_ZONE', zone: null });
+                    }
+                    
+                    clearInteractions();
+                } else {
+                    updateMyCard(instanceId, card => ({ ...card, currentHp: card.currentHp + amt }));
                 }
             };
 
@@ -1742,10 +1805,10 @@ const STARTER_DECKS = {
             };
 
             const isMyCard = useMemo(() => {
-                if(!inspectedCard || isSpectator) return false;
+                if(!inspectedCard || localIsSpectator) return false;
                 const id = inspectedCard.instanceId;
                 return myLocalState.grid.flat().some(c=>c?.instanceId===id) || myLocalState.actSlot?.instanceId===id || sharedZone?.instanceId===id;
-            }, [inspectedCard, myLocalState, sharedZone, isSpectator]);
+            }, [inspectedCard, myLocalState, sharedZone, localIsSpectator]);
 
             const clearInteractions = () => {
                 setActiveMenu(null); setMovingCard(null); setTargetingSource(null); setLockedInspectorId(null); setSelectedHandIdx(null); if (placingToken) setPlacingToken(false);
@@ -1785,7 +1848,7 @@ const STARTER_DECKS = {
                             </div>
                         )}
 
-                        {activeMenu && showMenuParams && activeMenu.id === showMenuParams.id && !isSpectator && (
+                        {activeMenu && showMenuParams && activeMenu.id === showMenuParams.id && !localIsSpectator && !myLocalState.isDead && (
                             <div className="absolute inset-0 bg-stone-950/95 z-30 flex flex-col justify-center items-center gap-2 p-3 rounded-lg shadow-inner">
                                 <div className="flex gap-1.5 w-full">
                                     <button onClick={(e)=>{e.stopPropagation(); setTargetingSource({ cellId: showMenuParams.id, instanceId: card.instanceId }); setActiveMenu(null); setLockedInspectorId(null);}} className="bg-rose-700/80 hover:bg-rose-600 transition text-rose-100 text-[10px] uppercase font-bold w-full py-1.5 rounded shadow">Target</button>
@@ -1824,7 +1887,7 @@ const STARTER_DECKS = {
                             
                             setLockedInspectorId(null);
                             if(!showMenuParams || showMenuParams.type==='grid') setInspectedCard(null); 
-                            if(onClick && !isSpectator) onClick(e); 
+                            if(onClick && !localIsSpectator && !myLocalState.isDead) onClick(e); 
                         }} 
                         onMouseEnter={() => { if(!isMoveTarget && !isPlacingTarget && !lockedInspectorId) setInspectedCard(null); }}
                         className={`w-full h-full border-2 border-dashed rounded-lg flex items-center justify-center transition-all ${
@@ -1858,8 +1921,8 @@ const STARTER_DECKS = {
                             } else {
                                 setInspectedCard(card);
                                 setLockedInspectorId(card.instanceId);
-                                if (onClick && !isTargetingMode && isMySpace && !isSpectator) onClick(e);
-                                if (showMenuParams && !isTargetingMode && isMySpace && !isSpectator) setActiveMenu(showMenuParams);
+                                if (onClick && !isTargetingMode && isMySpace && !localIsSpectator && !myLocalState.isDead) onClick(e);
+                                if (showMenuParams && !isTargetingMode && isMySpace && !localIsSpectator && !myLocalState.isDead) setActiveMenu(showMenuParams);
                                 if (typeof window !== 'undefined' && window.innerWidth >= 1024 && !isTargetingMode) setIsInspectorOpen(true);
                             }
                         }} 
@@ -1925,12 +1988,12 @@ const STARTER_DECKS = {
                             
                             <p className="text-stone-400 text-sm mb-6 h-6">
                                 {!connected ? <span className="text-rose-400 animate-pulse">Establishing connection...</span> : 
-                                 isSpectator ? <span className="text-indigo-400">Waiting for combatants to lock in...</span> :
+                                 localIsSpectator ? <span className="text-indigo-400">Waiting for combatants to lock in...</span> :
                                  !myLocalState.isReady ? "Pick a color and place your Vital card." : 
                                  <span className="text-emerald-400">Locked in. Waiting for others... ({Object.values(allPlayers).filter(p=>p.isReady).length}/{maxPlayers})</span>}
                             </p>
                             
-                            {!isSpectator && (
+                            {!localIsSpectator && (
                                 <>
                                     <div className="flex justify-center gap-3 mb-6">
                                         {PLAYER_COLORS.map(c => {
@@ -2010,7 +2073,7 @@ const STARTER_DECKS = {
             let bottomIds = [];
             let topIds = [];
             
-            if (isSpectator) {
+            if (localIsSpectator || myLocalState.isDead) {
                 const half = Math.ceil(activePlayerIds.length / 2);
                 bottomIds = activePlayerIds.slice(0, half);
                 topIds = activePlayerIds.slice(half);
@@ -2033,7 +2096,7 @@ const STARTER_DECKS = {
             const renderPlayerGrid = (id, isTopRow = false) => {
                 const pState = id === myPeerId ? myLocalState : allPlayers[id];
                 if (!pState) return null;
-                const isMe = id === myPeerId && !isSpectator;
+                const isMe = id === myPeerId && !localIsSpectator;
                 
                 // Flip perspective visually for top rows 
                 const gridRows = isTopRow ? [1, 0] : [0, 1];
@@ -2100,7 +2163,7 @@ const STARTER_DECKS = {
                     <div className="hidden lg:flex w-64 flex-col gap-4 shrink-0 overflow-y-auto relative z-10">
                         <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 shadow-md w-full">
                             <div className="flex justify-between items-center mb-2 border-b border-stone-800 pb-2">
-                                <h2 className="text-xs font-black text-amber-500 uppercase tracking-widest">{isSpectator ? 'Spectating' : `Room: ${roomCode}`}</h2>
+                                <h2 className="text-xs font-black text-amber-500 uppercase tracking-widest">{localIsSpectator ? 'Spectating' : `Room: ${roomCode}`}</h2>
                                 <button onClick={onLeaveLobby} className="text-[9px] bg-rose-950/50 text-rose-500 hover:text-rose-300 border border-rose-900/50 hover:bg-rose-900/60 px-2 py-0.5 rounded transition uppercase font-bold tracking-wider">Leave</button>
                             </div>
                             <div className="flex items-center justify-between text-[10px] font-mono mb-2">
@@ -2110,7 +2173,7 @@ const STARTER_DECKS = {
                                 </div>
                                 <span className="text-stone-400">{formatTime(matchTime)}</span>
                             </div>
-                            {!isSpectator && !myLocalState.isDead && (
+                            {!localIsSpectator && !myLocalState.isDead && (
                                 <div className="bg-stone-950 border border-stone-850 p-2 rounded flex justify-between items-center mt-3">
                                     <span className="text-[10px] text-amber-500 uppercase">Your Gold</span>
                                     <div className="flex items-center gap-2">
@@ -2187,12 +2250,12 @@ const STARTER_DECKS = {
                                 <div className="flex flex-col items-center px-4">
                                     <span className="text-[9px] font-mono text-amber-500 uppercase tracking-widest mb-1 text-center font-bold">Zone in Play</span>
                                     <div className="w-[14vw] sm:w-[75px] lg:w-[90px] h-[19.6vw] sm:h-[105px] lg:h-[126px] relative ring-2 ring-amber-900/50 rounded-lg">
-                                        {renderCard(sharedZone, placeToZone, { type: 'zone', id: 'cell-shared-zone' }, 'cell-shared-zone', !isSpectator)}
+                                        {renderCard(sharedZone, placeToZone, { type: 'zone', id: 'cell-shared-zone' }, 'cell-shared-zone', !localIsSpectator && !myLocalState.isDead)}
                                     </div>
                                 </div>
 
                                 {/* My Act (Right side) */}
-                                {!isSpectator && !myLocalState.isDead && (
+                                {!localIsSpectator && !myLocalState.isDead && (
                                     <div className="flex gap-2 border-l border-stone-800/50 pl-4">
                                         <div className="flex flex-col items-center">
                                             <span className="text-[7px] uppercase font-mono mb-1 text-amber-500">Your Act Slot</span>
@@ -2214,7 +2277,7 @@ const STARTER_DECKS = {
                         </div>
 
                         {/* Hand & Piles (Only if actively playing) */}
-                        {!isSpectator && !myLocalState.isDead && (
+                        {!localIsSpectator && !myLocalState.isDead && (
                             <div className="bg-stone-900 border border-stone-800 rounded-xl p-2 sm:p-4 flex gap-2 sm:gap-4 shrink-0 overflow-hidden relative z-10">
                                 <div className="flex flex-col gap-2 w-16 sm:w-28 border-r border-stone-800 pr-2 sm:pr-4 shrink-0">
                                     <button onClick={(e)=>{e.stopPropagation(); drawFromDeck();}} className="flex-1 bg-stone-950 border border-stone-800 hover:border-amber-600 rounded text-xs font-bold text-stone-300 transition flex flex-col items-center justify-center">
@@ -2264,7 +2327,7 @@ const STARTER_DECKS = {
                         )}
 
                         {/* Spectator Global Hands Viewer */}
-                        {(isSpectator || myLocalState.isDead) && (
+                        {(localIsSpectator || myLocalState.isDead) && (
                             <div className="bg-stone-900 border border-stone-800 rounded-xl p-2 sm:p-4 overflow-x-auto min-h-[160px]">
                                 <div className="flex justify-between items-center mb-2 border-b border-stone-800 pb-2">
                                     <span className="text-[10px] font-mono text-stone-500 uppercase">Combatant Hands</span>
@@ -2346,9 +2409,9 @@ const STARTER_DECKS = {
                                             <div className="flex items-center justify-between bg-stone-900 border border-stone-800 w-full max-w-[280px] p-2 rounded-xl shadow-md">
                                                 <span className="text-[10px] text-stone-500 font-bold uppercase tracking-widest pl-2">Health</span>
                                                 <div className="flex items-center gap-3">
-                                                    {isMyCard && !isSpectator && <button onClick={() => modifyHealth(inspectedCard.instanceId, -1)} className="w-7 h-7 bg-rose-900/40 hover:bg-rose-900/80 border border-rose-700/50 text-rose-400 rounded-lg font-black transition flex items-center justify-center">-</button>}
+                                                    {isMyCard && !localIsSpectator && !myLocalState.isDead && <button onClick={() => modifyHealth(inspectedCard.instanceId, -1)} className="w-7 h-7 bg-rose-900/40 hover:bg-rose-900/80 border border-rose-700/50 text-rose-400 rounded-lg font-black transition flex items-center justify-center">-</button>}
                                                     <span className="text-xl font-black text-amber-500 w-8 text-center">{inspectedCard.currentHp}</span>
-                                                    {isMyCard && !isSpectator && <button onClick={() => modifyHealth(inspectedCard.instanceId, 1)} className="w-7 h-7 bg-emerald-900/40 hover:bg-emerald-900/80 border border-emerald-700/50 text-emerald-400 rounded-lg font-black transition flex items-center justify-center">+</button>}
+                                                    {isMyCard && !localIsSpectator && !myLocalState.isDead && <button onClick={() => modifyHealth(inspectedCard.instanceId, 1)} className="w-7 h-7 bg-emerald-900/40 hover:bg-emerald-900/80 border border-emerald-700/50 text-emerald-400 rounded-lg font-black transition flex items-center justify-center">+</button>}
                                                 </div>
                                             </div>
                                         )}
@@ -2361,7 +2424,7 @@ const STARTER_DECKS = {
                             </div>
 
                             {/* Status Effect Markers UI Dropdown */}
-                            {isMyCard && !isSpectator && (
+                            {isMyCard && !localIsSpectator && !myLocalState.isDead && (
                                 <div className="bg-stone-950 border border-stone-800 rounded-xl shrink-0 transition-all overflow-hidden">
                                     <button onClick={() => setShowMarkersUI(!showMarkersUI)} className="w-full flex justify-between items-center p-4 text-[10px] font-bold text-stone-500 uppercase tracking-widest outline-none hover:bg-stone-900 transition-colors">
                                         <span>Status Markers</span><span className="text-stone-400">{showMarkersUI ? '▲' : '▼'}</span>
@@ -2386,7 +2449,7 @@ const STARTER_DECKS = {
                             )}
 
                             {/* Dice Roller */}
-                            {!isSpectator && !myLocalState.isDead && (
+                            {!localIsSpectator && !myLocalState.isDead && (
                                 <div className="bg-stone-950 border border-stone-800 rounded-xl p-4 flex flex-col gap-3 shrink-0">
                                     <span className="text-[10px] font-bold text-stone-500 uppercase tracking-widest block text-center">Dice Roller</span>
                                     <div className="flex gap-2">
@@ -2398,7 +2461,7 @@ const STARTER_DECKS = {
                                 </div>
                             )}
 
-                            {!isSpectator && !myLocalState.isDead && (
+                            {!localIsSpectator && !myLocalState.isDead && (
                                 <div className="bg-stone-950 border border-stone-800 rounded-xl p-4 flex flex-col items-center shrink-0 mt-auto">
                                     <button onClick={() => setTokenModal(true)} className="w-full bg-indigo-900/30 hover:bg-indigo-900/60 text-indigo-400 border border-indigo-900/50 rounded py-2 mb-2 text-xs font-bold uppercase transition flex items-center justify-center gap-2">
                                         Spawn Token
@@ -2425,7 +2488,7 @@ const STARTER_DECKS = {
                                         return (
                                             <div key={card.instanceId + i} onClick={()=> { if (viewModal.onSelect) viewModal.onSelect(realIdx); else if (viewModal.type === 'myGrave' || viewModal.type === 'myVoid') setModalSelectedIdx(modalSelectedIdx === i ? null : i); }} className={`w-[22vw] sm:w-[100px] h-[30.8vw] sm:h-[140px] relative transition-transform hover:scale-105 ${viewModal.onSelect || viewModal.type === 'myGrave' || viewModal.type === 'myVoid' ? 'cursor-pointer' : ''}`}>
                                                 {renderCardLayout(card)}
-                                                {modalSelectedIdx === i && (viewModal.type === 'myGrave' || viewModal.type === 'myVoid') && !isSpectator && (
+                                                {modalSelectedIdx === i && (viewModal.type === 'myGrave' || viewModal.type === 'myVoid') && !localIsSpectator && (
                                                     <div className="absolute inset-0 bg-stone-950/95 z-30 flex flex-col justify-center gap-2 p-2 rounded-lg border border-amber-500 shadow-xl">
                                                         <button onClick={(e)=>{e.stopPropagation(); moveFromPile(viewModal.type, i, 'hand')}} className="bg-stone-800 text-stone-200 text-[8px] sm:text-[10px] w-full py-1.5 rounded uppercase font-bold">To Hand</button>
                                                         <button onClick={(e)=>{e.stopPropagation(); moveFromPile(viewModal.type, i, 'deck')}} className="bg-emerald-900 text-emerald-200 text-[8px] sm:text-[10px] w-full py-1.5 rounded uppercase font-bold">To Deck</button>
